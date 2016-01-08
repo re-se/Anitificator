@@ -129,7 +129,7 @@ window.onload = ()->
             console.log item.$.Title
             @props.Actions.onSetTimer(+item.$.PID)
             callback = (
-              (onFinish)->
+              (onFinish, item)->
                 ()->
                   new Notification(
                     item.$.Title,
@@ -137,7 +137,7 @@ window.onload = ()->
                   )
                   console.log item.$.Title
                   onFinish()
-            )(@props.Actions.onFinishTimer)
+            )(@props.Actions.onFinishTimer, item)
             setTimer(start, -300, callback)
 
         if date.getDate?() isnt start.getDate() or cnt > 30

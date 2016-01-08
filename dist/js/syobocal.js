@@ -36,8 +36,7 @@ csvToChList = function(csv) {
 };
 
 genGroupList = function(chs) {
-  var ch, j, len, results;
-  results = [];
+  var ch, j, len;
   for (j = 0, len = chs.length; j < len; j++) {
     ch = chs[j];
     if (ch != null) {
@@ -48,12 +47,10 @@ genGroupList = function(chs) {
           ChGroupName: ch.ChGroupName
         };
       }
-      results.push(GroupList[ch.ChGID].ChID.push(ch.ChID));
-    } else {
-      results.push(void 0);
+      GroupList[ch.ChGID].ChID.push(ch.ChID);
     }
   }
-  return results;
+  return GroupList;
 };
 
 syobocal = {
@@ -80,7 +77,6 @@ syobocal = {
   },
   getConfig: function(cb) {
     var cachePath;
-    console.log(config);
     if (config != null) {
       return cb(config);
     } else {
@@ -91,12 +87,10 @@ syobocal = {
           if (err) {
             throw err;
           }
-          console.log(cb);
           config = JSON.parse(data.toString());
           return cb(JSON.parse(data.toString()));
         });
       } else {
-        console.log("configggg");
         config = require('./config.js');
         fs.writeFile(cachePath, JSON.stringify(config));
         return cb(config);
@@ -122,8 +116,6 @@ syobocal = {
       client = require('cheerio-httpcli');
       return client.fetch('http://cal.syoboi.jp/mng?Action=ShowChList', {}, function(err, $, res) {
         var c, ch, column, csv, j, json, k, len, len1, ref, ref1;
-        console.log($('title').text());
-        console.log($(".output")[1].children[0].children.innerHTML);
         csv = "";
         ref = $(".output")[1].children;
         for (j = 0, len = ref.length; j < len; j++) {
@@ -133,7 +125,6 @@ syobocal = {
             ref1 = ch.children;
             for (k = 0, len1 = ref1.length; k < len1; k++) {
               c = ref1[k];
-              console.log(c.children[0]);
               if (c.children[0] != null) {
                 column.push(c.children[0].data);
               }

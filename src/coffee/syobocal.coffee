@@ -25,6 +25,7 @@ genGroupList = (chs) ->
       unless GroupList[ch.ChGID]?
         GroupList[ch.ChGID] = {ChID: [], ChGID: ch.ChGID, ChGroupName: ch.ChGroupName}
       GroupList[ch.ChGID].ChID.push ch.ChID
+  GroupList
 
 
 syobocal =
@@ -46,7 +47,6 @@ syobocal =
     fs.writeFile cachePath, JSON.stringify config
 
   getConfig: (cb) ->
-    console.log config
     if config?
       return cb config
     else
@@ -55,11 +55,9 @@ syobocal =
         console.log(cachePath)
         fs.readFile cachePath, (err, data) ->
           throw err if err
-          console.log cb
           config = JSON.parse data.toString()
           cb(JSON.parse data.toString())
       else
-        console.log "configggg"
         config = require './config.js'
         fs.writeFile cachePath, JSON.stringify config
         cb(config)
@@ -78,14 +76,13 @@ syobocal =
     else
       client = require 'cheerio-httpcli'
       client.fetch('http://cal.syoboi.jp/mng?Action=ShowChList', {}, (err, $, res) ->
-        console.log($('title').text())
-        console.log($(".output")[1].children[0].children.innerHTML)
+        # console.log($('title').text())
+        # console.log($(".output")[1].children[0].children.innerHTML)
         csv = ""
         for ch in $(".output")[1].children
           if ch.type is "tag"
             column = []
             for c in ch.children
-              console.log c.children[0]
               column.push c.children[0].data if c.children[0]?
             csv += column.join(",") + "\n"
         json = csvToChList csv
