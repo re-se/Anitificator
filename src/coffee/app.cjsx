@@ -58,7 +58,7 @@ window.onload = ()->
 
   Channels = React.createClass
     changeCheck: (e) ->
-      id = +e.target.parentElement.parentElement.id
+      id = +e.target.parentElement.id
       @props.onChange id, e.target.checked
 
     getInitialState: () ->
@@ -79,31 +79,27 @@ window.onload = ()->
       .sort((a, b) -> +a.$$ - +b.$$)
 
       items = lists.map (ch, index) =>
-        channel = [
-          <td>
-            <input type="checkbox" checked={@props.config.channels?[ch.ChID]} onChange={@changeCheck}/>
-          </td>
-          <td> {ch.ChName} </td>
-        ]
         # style = {display: "none"} if not @props.groups[@props.current].ChID.includes(ch.ChID)
         return (
-          <tr id={ch.ChID} key={ch.ChName}>
-            {channel}
-          </tr>
+          <li>
+            <label id={ch.ChID} key={ch.ChName}>
+              <input type="checkbox" checked={@props.config.channels?[ch.ChID]} onChange={@changeCheck}/>
+              {ch.ChName}
+            </label>
+          </li>
         )
 
       items.unshift [
-        <tr id={-@props.current} key={@props.groups[@props.current].ChGroupName}>
-          <td>
-            <input type="checkbox" onChange={@changeCheck}/>
-          </td>
-          <td> [Select All] </td>
-        </tr>
+        <li>
+          <label id={-@props.current} key={@props.groups[@props.current].ChGroupName}>
+              <input type="checkbox" onChange={@changeCheck}/> [Select All]
+          </label>
+        </li>
       ]
       return (
-        <table><tbody>
+        <ul>
           {items}
-        </tbody></table>
+        </ul>
       )
 
   Animes = React.createClass
@@ -159,21 +155,21 @@ window.onload = ()->
         trs.push [
           <div className="anime"><table><tbody>
           <tr key={item.$.PID}>
-            <td rowSpan=2> {formatDate start, "hh:mm"} </td>
+            <td rowSpan=2 className="startTime"> {formatDate start, "hh:mm"} </td>
             <td className="animeTitle">{item.$.Title}</td>
           </tr>
-          <tr>
+          <tr className="animeSubTitle">
             <td>{item.$.SubTitle}</td>
           </tr>
           <tr>
-            <td>{item.$.ChName}</td>
+            <td className="animeChName">{item.$.ChName}</td>
             <td> {formatDate(start) + " - " + formatDate(end)} </td>
           </tr>
           </tbody></table></div>
         ]
 
       return (
-        <div>
+        <div className="animes-inner">
           {items}
         </div>
       )
@@ -232,10 +228,17 @@ window.onload = ()->
       if ChID < 0
         for id in @state.group[-ChID].ChID
           chs[id] = checked
-          selected.push id
+          if checked
+            selected.push id
+          else
+            selected = selected.filter (d)->+d isnt +id
       else
         chs[ChID] = checked
-        selected.push ChID
+        if checked
+          selected.push ChID
+        else
+          selected = selected.filter (d)->+d isnt +ChID
+
       config = {channels: chs}
       first = @state.group[0]
       first.ChID = selected
@@ -248,8 +251,8 @@ window.onload = ()->
         onSetTimer: @onSetTimer
         onFinishTimer: @onFinishTimer
       return (
-        <div className="inner">
-          <div>
+        <div className="inner clearfix">
+          <div className="leftbar">
             <div className="groups">
               <Groups
                 data={@state.group}

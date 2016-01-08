@@ -1,3 +1,5 @@
+@list-selected: #F2F2F2;
+
 html, body {
   height: 100%;
   overflow-y: hidden;
@@ -8,54 +10,110 @@ html, body {
   height: 100%;
 }
 
+ul {
+  margin: 0;
+  padding: 0;
+}
+li {
+  list-style-type: none;
+  padding: 4px;
+}
+li:hover {
+  background-color: darken(white, 5%);
+}
+li.group-selected:hover {
+  background-color: darken(@list-selected, 5%);
+}
+
 .groups {
-  width: 20%;
+  height: 100%;
+  width: 50%;
+  overflow-y: auto;
   float: left;
-  ul {
-    margin: 0;
-    padding: 0;
-  }
-  li {
-    list-style-type: none;
-    padding: 4px;
-  }
-  li:hover {
-    background-color: darken(white, 5%);
-  }
-  li.group-selected:hover {
-    background-color: darken(#d49e9e, 5%);
-  }
+
 }
 
 .group-selected {
-  background: #d49e9e
+  background: @list-selected;
 }
 
 .channels {
-  width: 20%;
+  height: 100%;
+  width: 50%;
   float: left;
+  overflow-y: auto;
 }
 
 .animes {
   height: 100%;
   width: 60%;
   float: left;
-  overflow-y: scroll;
+  overflow-y: auto;
+}
+
+.animes-inner {
+  width: 100%;
+  table {
+    width: 100%;
+  }
 }
 
 .anime {
+  width: 100%;
   margin-bottom: 20px;
 }
 
 .date {
-    background: #1487bd;
-    display: inline-block;
+  padding: 5px;
+  background: #1487bd;
+  color: white;
+  display: inline-block;
 }
 
 
 .date:before {
 }
 
+.startTime {
+  text-align: center;
+  font-size: xx-large;
+}
+
 .animeTitle {
-  font-size: 20px;
+  width: 80%;
+  font-size: large;
+}
+
+.animeSubTitle {
+  font-size: smaller;
+}
+
+.animeChName {
+  text-align: center;
+  font-size: small;
+}
+
+.leftbar {
+  width: 40%;
+  height: 100%;
+  float: left;
+}
+
+.clearfix:after {
+  visibility: hidden;
+  display: block;
+  content: " ";
+  clear: both;
+  height: 0;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #F2F2F2;
+  border-radius: 5px;
+  // box-shadow: 0 0 1px black inset;
 }

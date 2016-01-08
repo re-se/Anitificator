@@ -69,7 +69,7 @@ window.onload = function() {
   Channels = React.createClass({
     changeCheck: function(e) {
       var id;
-      id = +e.target.parentElement.parentElement.id;
+      id = +e.target.parentElement.id;
       return this.props.onChange(id, e.target.checked);
     },
     getInitialState: function() {
@@ -100,30 +100,27 @@ window.onload = function() {
       });
       items = lists.map((function(_this) {
         return function(ch, index) {
-          var channel, ref3;
-          channel = [
-            React.createElement("td", null, React.createElement("input", {
-              "type": "checkbox",
-              "checked": ((ref3 = _this.props.config.channels) != null ? ref3[ch.ChID] : void 0),
-              "onChange": _this.changeCheck
-            })), React.createElement("td", null, " ", ch.ChName, " ")
-          ];
-          return React.createElement("tr", {
+          var ref3;
+          return React.createElement("li", null, React.createElement("label", {
             "id": ch.ChID,
             "key": ch.ChName
-          }, channel);
+          }, React.createElement("input", {
+            "type": "checkbox",
+            "checked": ((ref3 = _this.props.config.channels) != null ? ref3[ch.ChID] : void 0),
+            "onChange": _this.changeCheck
+          }), ch.ChName));
         };
       })(this));
       items.unshift([
-        React.createElement("tr", {
+        React.createElement("li", null, React.createElement("label", {
           "id": -this.props.current,
           "key": this.props.groups[this.props.current].ChGroupName
-        }, React.createElement("td", null, React.createElement("input", {
+        }, React.createElement("input", {
           "type": "checkbox",
           "onChange": this.changeCheck
-        })), React.createElement("td", null, " [Select All] "))
+        }), " [Select All]"))
       ]);
-      return React.createElement("table", null, React.createElement("tbody", null, items));
+      return React.createElement("ul", null, items);
     }
   });
   Animes = React.createClass({
@@ -187,13 +184,20 @@ window.onload = function() {
           }, React.createElement("table", null, React.createElement("tbody", null, React.createElement("tr", {
             "key": item.$.PID
           }, React.createElement("td", {
-            "rowSpan": 2
+            "rowSpan": 2,
+            "className": "startTime"
           }, " ", formatDate(start, "hh:mm"), " "), React.createElement("td", {
             "className": "animeTitle"
-          }, item.$.Title)), React.createElement("tr", null, React.createElement("td", null, item.$.SubTitle)), React.createElement("tr", null, React.createElement("td", null, item.$.ChName), React.createElement("td", null, " ", formatDate(start) + " - " + formatDate(end), " ")))))
+          }, item.$.Title)), React.createElement("tr", {
+            "className": "animeSubTitle"
+          }, React.createElement("td", null, item.$.SubTitle)), React.createElement("tr", null, React.createElement("td", {
+            "className": "animeChName"
+          }, item.$.ChName), React.createElement("td", null, " ", formatDate(start) + " - " + formatDate(end), " ")))))
         ]);
       }
-      return React.createElement("div", null, items);
+      return React.createElement("div", {
+        "className": "animes-inner"
+      }, items);
     }
   });
   Contents = React.createClass({
@@ -295,11 +299,23 @@ window.onload = function() {
         for (k = 0, len1 = ref2.length; k < len1; k++) {
           id = ref2[k];
           chs[id] = checked;
-          selected.push(id);
+          if (checked) {
+            selected.push(id);
+          } else {
+            selected = selected.filter(function(d) {
+              return +d !== +id;
+            });
+          }
         }
       } else {
         chs[ChID] = checked;
-        selected.push(ChID);
+        if (checked) {
+          selected.push(ChID);
+        } else {
+          selected = selected.filter(function(d) {
+            return +d !== +ChID;
+          });
+        }
       }
       config = {
         channels: chs
@@ -321,8 +337,10 @@ window.onload = function() {
         onFinishTimer: this.onFinishTimer
       };
       return React.createElement("div", {
-        "className": "inner"
-      }, React.createElement("div", null, React.createElement("div", {
+        "className": "inner clearfix"
+      }, React.createElement("div", {
+        "className": "leftbar"
+      }, React.createElement("div", {
         "className": "groups"
       }, React.createElement(Groups, {
         "data": this.state.group,
