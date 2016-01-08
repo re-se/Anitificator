@@ -108,35 +108,39 @@ window.onload = ()->
 
   Animes = React.createClass
     render: () ->
-      hasTimer = @props.hasTimer
+      first = true
       date = 0
       items = []
       trs = ""
-      this.props.animes.forEach (item) =>
+      cnt = 0
+      now = Date.now()
+      for item in @props.animes
         if not @props.channels.length > 0
-          return
+          continue
         if not @props.config.channels[item.$.ChID]
-          return
+          continue
         start = parseDate item.$.StTime, item.$.StOffset
         end = parseDate item.$.EdTime, item.$.StOffset
-        if start.getTime() < @props.start
-          return
-        if !hasTimer
-          (()->)()
-          @props.Actions.onSetTimer()
-          setTimer(start, -300, ((onFinish)->
-            ()->
-              new Notification(
-                item.$.Title,
-                body: item.$.SubTitle
-              )
-              console.log item.$.Title
-              onFinish()
+        if end.getTime() < now
+          continue
+        if first and start.getTime() > now
+          first = false
+          if +@props.PID isnt +item.$.PID
+            console.log item.$.Title
+            @props.Actions.onSetTimer(+item.$.PID)
+            callback = (
+              (onFinish)->
+                ()->
+                  new Notification(
+                    item.$.Title,
+                    body: item.$.SubTitle
+                  )
+                  console.log item.$.Title
+                  onFinish()
             )(@props.Actions.onFinishTimer)
-          )
-          hasTimer = true
+            setTimer(start, -300, callback)
 
-        if date.getDate?() isnt start.getDate()
+        if date.getDate?() isnt start.getDate() or cnt > 30
           if trs.length > 0
             trs = (
               <div>
@@ -149,6 +153,9 @@ window.onload = ()->
             ]
           date = start
           trs = []
+        if cnt++ > 30
+          break
+
         trs.push [
           <div className="anime"><table><tbody>
           <tr key={item.$.PID}>
@@ -164,6 +171,7 @@ window.onload = ()->
           </tr>
           </tbody></table></div>
         ]
+
       return (
         <div>
           {items}
@@ -178,7 +186,7 @@ window.onload = ()->
       animes: []
       config: require './dist/js/config.js'
       displayDate: new Date()
-      hasTimer: false
+      settedTimerPID: -1
     componentDidMount: () ->
       syobocal.getConfig((res) =>
         ch =
@@ -200,11 +208,11 @@ window.onload = ()->
         syobocal.getChList (res) =>
           @setState channels: res
       )
-    onSetTimer: () ->
-      @setState hasTimer: true
+    onSetTimer: (PID) ->
+      @setState settedTimerPID: PID
+
     onFinishTimer: () ->
-      @setState animes: @state.animes, () =>
-        @setState hasTimer: false
+      @setState animes: @state.animes
 
     chengeChGroup: (ChGID) ->
       @setState current: ChGID
@@ -261,7 +269,7 @@ window.onload = ()->
           <div className="animes">
             <Animes
               Actions={AnimesActions}
-              hasTimer={@state.hasTimer}
+              PID={@state.settedTimerPID}
               animes={@state.animes}
               channels={@state.channels}
               config={@state.config}
