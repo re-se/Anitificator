@@ -14,6 +14,7 @@
     "cheerio-httpcli": "^0.3.8",
     "react": "^0.14.5",
     "react-dom": "^0.14.5",
+    "request": "^2.67.0",
     "xml2js": "^0.4.15"
   },
   "devDependencies": {
