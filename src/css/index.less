@@ -1,0 +1,61 @@
+html, body {
+  height: 100%;
+  overflow-y: hidden;
+  margin: 0;
+}
+
+#contents, .inner {
+  height: 100%;
+}
+
+.groups {
+  width: 20%;
+  float: left;
+  ul {
+    margin: 0;
+    padding: 0;
+  }
+  li {
+    list-style-type: none;
+    padding: 4px;
+  }
+  li:hover {
+    background-color: darken(white, 5%);
+  }
+  li.group-selected:hover {
+    background-color: darken(#d49e9e, 5%);
+  }
+}
+
+.group-selected {
+  background: #d49e9e
+}
+
+.channels {
+  width: 20%;
+  float: left;
+}
+
+.animes {
+  height: 100%;
+  width: 60%;
+  float: left;
+  overflow-y: scroll;
+}
+
+.anime {
+  margin-bottom: 20px;
+}
+
+.date {
+    background: #1487bd;
+    display: inline-block;
+}
+
+
+.date:before {
+}
+
+.animeTitle {
+  font-size: 20px;
+}
