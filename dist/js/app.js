@@ -1,5 +1,5 @@
 window.onload = function() {
-  var Animes, Channels, Contents, Groups, React, ReactDOM, formatDate, parseDate, remote, setTimer, syobocal;
+  var Animes, Audios, Channels, Contents, Groups, React, ReactDOM, formatDate, parseDate, remote, setTimer, syobocal;
   remote = require('remote');
   React = require('react');
   ReactDOM = require('react-dom');
@@ -14,7 +14,7 @@ window.onload = function() {
     d.push(parseInt(n.slice(8, 10)));
     d.push(parseInt(n.slice(10, 12)));
     date = new Date((d.slice(0, 3).join('-')) + " " + d[3] + ":" + d[4]);
-    if (offset > 0) {
+    if (offset !== 0) {
       date.setTime(Date.parse(date) + offset * 1000);
     }
     return date;
@@ -125,39 +125,51 @@ window.onload = function() {
   });
   Animes = React.createClass({
     render: function() {
-      var callback, cnt, date, end, first, item, items, j, len, now, ref, start, trs;
-      first = true;
+      var callback, cname, cnt, date, end, hasTimer, item, items, j, len, now, ref, start, timing, trs;
+      console.log("currentTimer: " + this.props.currentTimer);
+      console.log("notified: " + this.props.notified);
+      hasTimer = !this.props.currentTimer.every((function(_this) {
+        return function(ele) {
+          return _this.props.notified.includes(+ele);
+        };
+      })(this));
+      console.log("hasTimer: " + hasTimer);
       date = 0;
       items = [];
       trs = "";
       cnt = 0;
       now = Date.now();
+      timing = Infinity;
       ref = this.props.animes;
       for (j = 0, len = ref.length; j < len; j++) {
         item = ref[j];
-        if (!this.props.channels.length > 0) {
-          continue;
+        if (!(this.props.channels.length > 0)) {
+          break;
         }
         if (!this.props.config.channels[item.$.ChID]) {
           continue;
         }
-        start = parseDate(item.$.StTime, item.$.StOffset);
-        end = parseDate(item.$.EdTime, item.$.StOffset);
+        start = parseDate(item.$.StTime, +item.$.StOffset);
+        end = parseDate(item.$.EdTime, +item.$.StOffset);
         if (end.getTime() < now) {
           continue;
         }
-        if (first && start.getTime() > now) {
-          first = false;
-          if (+this.props.PID !== +item.$.PID) {
+        if (start.getTime() - timing > 0) {
+          hasTimer = true;
+        }
+        if (!hasTimer && start.getTime() > now) {
+          if (!this.props.notified.includes(+item.$.PID) && !this.props.currentTimer.includes(+item.$.PID)) {
+            timing = start.getTime();
             console.log(item.$.Title);
             this.props.Actions.onSetTimer(+item.$.PID);
             callback = (function(onFinish, item) {
               return function() {
+                document.getElementById("sound").play();
                 new Notification(item.$.Title, {
                   body: item.$.SubTitle
                 });
                 console.log(item.$.Title);
-                return onFinish();
+                return onFinish(+item.$.PID);
               };
             })(this.props.Actions.onFinishTimer, item);
             setTimer(start, -300, callback);
@@ -178,9 +190,10 @@ window.onload = function() {
         if (cnt++ > 30) {
           break;
         }
+        cname = now > start.getTime() ? "onair" : "";
         trs.push([
           React.createElement("div", {
-            "className": "anime"
+            "className": "anime " + cname
           }, React.createElement("table", null, React.createElement("tbody", null, React.createElement("tr", {
             "key": item.$.PID
           }, React.createElement("td", {
@@ -192,12 +205,20 @@ window.onload = function() {
             "className": "animeSubTitle"
           }, React.createElement("td", null, item.$.SubTitle)), React.createElement("tr", null, React.createElement("td", {
             "className": "animeChName"
-          }, item.$.ChName), React.createElement("td", null, " ", formatDate(start) + " - " + formatDate(end), " ")))))
+          }, item.$.ChName), React.createElement("td", null, " ", formatDate(start) + " - " + formatDate(end) + " (offset: " + item.$.StOffset / 60 + " min)", " ")))))
         ]);
       }
       return React.createElement("div", {
         "className": "animes-inner"
       }, items);
+    }
+  });
+  Audios = React.createClass({
+    render: function() {
+      return React.createElement("audio", {
+        "id": "sound",
+        "src": "./dist/resource/audio/notification.mp3"
+      });
     }
   });
   Contents = React.createClass({
@@ -208,8 +229,9 @@ window.onload = function() {
         channels: [],
         animes: [],
         config: require('./dist/js/config.js'),
-        displayDate: new Date(),
-        settedTimerPID: -1
+        notified: [],
+        currentTimer: [],
+        finished: -1
       };
     },
     componentDidMount: function() {
@@ -261,12 +283,26 @@ window.onload = function() {
     },
     onSetTimer: function(PID) {
       return this.setState({
-        settedTimerPID: PID
+        currentTimer: this.state.currentTimer.concat(PID)
       });
     },
-    onFinishTimer: function() {
+    onFinishTimer: function(PID) {
       return this.setState({
-        animes: this.state.animes
+        notified: this.state.notified.concat(+PID)
+      }, function() {
+        return this.setState({
+          currentTimer: this.state.currentTimer.filter(function(d) {
+            return +d !== +PID;
+          })
+        }, function() {
+          return this.setState({
+            finished: +PID
+          }, function() {
+            return this.setState({
+              animes: this.state.animes
+            });
+          });
+        });
       });
     },
     chengeChGroup: function(ChGID) {
@@ -358,12 +394,14 @@ window.onload = function() {
         "className": "animes"
       }, React.createElement(Animes, {
         "Actions": AnimesActions,
-        "PID": this.state.settedTimerPID,
+        "notified": this.state.notified,
+        "currentTimer": this.state.currentTimer,
         "animes": this.state.animes,
         "channels": this.state.channels,
-        "config": this.state.config,
-        "start": this.state.displayDate
-      })));
+        "config": this.state.config
+      })), React.createElement(Audios, {
+        "finished": this.state.finished
+      }));
     }
   });
   return ReactDOM.render(React.createElement(Contents, null), document.getElementById('contents'));

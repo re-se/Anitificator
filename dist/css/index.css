@@ -1,5 +1,6 @@
 html,
 body {
+  color: #2F2F2F;
   height: 100%;
   overflow-y: hidden;
   margin: 0;
@@ -42,6 +43,9 @@ li.group-selected:hover {
   width: 60%;
   float: left;
   overflow-y: auto;
+}
+.animes .onair {
+  color: #9A9A9A;
 }
 .animes-inner {
   width: 100%;
@@ -91,6 +95,6 @@ li.group-selected:hover {
   height: 8px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #F2F2F2;
+  background: #DADADA;
   border-radius: 5px;
 }

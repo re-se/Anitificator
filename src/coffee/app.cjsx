@@ -13,7 +13,7 @@ window.onload = ()->
     d.push parseInt n[10..11]  # 4:minute
 
     date = new Date("#{d[0..2].join('-')} #{d[3]}:#{d[4]}")
-    date.setTime(Date.parse(date) + offset * 1000) if offset > 0
+    date.setTime(Date.parse(date) + offset * 1000) if offset isnt 0
     return date
 
   formatDate = (date, format) ->
@@ -104,35 +104,44 @@ window.onload = ()->
 
   Animes = React.createClass
     render: () ->
-      first = true
+      console.log "currentTimer: " + @props.currentTimer
+      console.log "notified: " + @props.notified
+      hasTimer = not @props.currentTimer.every (ele) =>
+        @props.notified.includes +ele
+      console.log "hasTimer: " + hasTimer
       date = 0
       items = []
       trs = ""
       cnt = 0
       now = Date.now()
+      # now = parseDate "20160109101000"
+      timing = Infinity
       for item in @props.animes
-        if not @props.channels.length > 0
-          continue
+        if !(@props.channels.length > 0)
+          break
         if not @props.config.channels[item.$.ChID]
           continue
-        start = parseDate item.$.StTime, item.$.StOffset
-        end = parseDate item.$.EdTime, item.$.StOffset
-        if end.getTime() < now
+        start = parseDate item.$.StTime, +item.$.StOffset
+        end = parseDate item.$.EdTime, +item.$.StOffset
+        if end.getTime() < now # すでに終わった番組は飛ばす
           continue
-        if first and start.getTime() > now
-          first = false
-          if +@props.PID isnt +item.$.PID
+        hasTimer = true if start.getTime() - timing > 0
+        if not hasTimer and start.getTime() > now
+          if not @props.notified.includes(+item.$.PID) and
+          not @props.currentTimer.includes(+item.$.PID)
+            timing = start.getTime()
             console.log item.$.Title
             @props.Actions.onSetTimer(+item.$.PID)
             callback = (
               (onFinish, item)->
                 ()->
+                  document.getElementById("sound").play()
                   new Notification(
                     item.$.Title,
                     body: item.$.SubTitle
                   )
                   console.log item.$.Title
-                  onFinish()
+                  onFinish(+item.$.PID)
             )(@props.Actions.onFinishTimer, item)
             setTimer(start, -300, callback)
 
@@ -151,20 +160,20 @@ window.onload = ()->
           trs = []
         if cnt++ > 30
           break
-
+        cname = if now > start.getTime() then "onair" else ""
         trs.push [
-          <div className="anime"><table><tbody>
-          <tr key={item.$.PID}>
-            <td rowSpan=2 className="startTime"> {formatDate start, "hh:mm"} </td>
-            <td className="animeTitle">{item.$.Title}</td>
-          </tr>
-          <tr className="animeSubTitle">
-            <td>{item.$.SubTitle}</td>
-          </tr>
-          <tr>
-            <td className="animeChName">{item.$.ChName}</td>
-            <td> {formatDate(start) + " - " + formatDate(end)} </td>
-          </tr>
+          <div className={"anime " + cname}><table><tbody>
+            <tr key={item.$.PID}>
+              <td rowSpan=2 className="startTime"> {formatDate start, "hh:mm"} </td>
+              <td className="animeTitle">{item.$.Title}</td>
+            </tr>
+            <tr className="animeSubTitle">
+              <td>{item.$.SubTitle}</td>
+            </tr>
+            <tr>
+              <td className="animeChName">{item.$.ChName}</td>
+              <td> {formatDate(start) + " - " + formatDate(end) + " (offset: " + item.$.StOffset/60 + " min)"} </td>
+            </tr>
           </tbody></table></div>
         ]
 
@@ -174,6 +183,14 @@ window.onload = ()->
         </div>
       )
 
+  Audios = React.createClass
+    render: () ->
+      # return <div></div> if @props.finished < 0
+      return (
+        <audio id="sound" src="./dist/resource/audio/notification.mp3" />
+
+      )
+
   Contents = React.createClass
     getInitialState: () ->
       group: []
@@ -181,8 +198,9 @@ window.onload = ()->
       channels: []
       animes: []
       config: require './dist/js/config.js'
-      displayDate: new Date()
-      settedTimerPID: -1
+      notified: []
+      currentTimer: []
+      finished: -1
     componentDidMount: () ->
       syobocal.getConfig((res) =>
         ch =
@@ -205,10 +223,13 @@ window.onload = ()->
           @setState channels: res
       )
     onSetTimer: (PID) ->
-      @setState settedTimerPID: PID
+      @setState currentTimer: @state.currentTimer.concat PID
 
-    onFinishTimer: () ->
-      @setState animes: @state.animes
+    onFinishTimer: (PID) ->
+      @setState notified: @state.notified.concat(+PID), ()->
+        @setState currentTimer: @state.currentTimer.filter((d)-> +d isnt +PID), ()->
+          @setState finished: +PID, ()->
+            @setState animes: @state.animes
 
     chengeChGroup: (ChGID) ->
       @setState current: ChGID
@@ -272,13 +293,14 @@ window.onload = ()->
           <div className="animes">
             <Animes
               Actions={AnimesActions}
-              PID={@state.settedTimerPID}
+              notified={@state.notified}
+              currentTimer={@state.currentTimer}
               animes={@state.animes}
               channels={@state.channels}
               config={@state.config}
-              start={@state.displayDate}
             />
           </div>
+          <Audios finished={@state.finished}/>
         </div>
       )
 
