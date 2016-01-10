@@ -1,9 +1,10 @@
-@list-selected: #F2F2F2;
+@list-bg: #2F2F2F;
+@list-selected: #3275c7;
 
 html, body {
   color: #2F2F2F;
   height: 100%;
-  overflow-y: hidden;
+  overflow: hidden;
   margin: 0;
 }
 
@@ -20,10 +21,10 @@ li {
   padding: 4px;
 }
 li:hover {
-  background-color: darken(white, 5%);
+  background-color: lighten(@list-bg, 5%);
 }
 li.group-selected:hover {
-  background-color: darken(@list-selected, 5%);
+  background-color: lighten(@list-selected, 5%);
 }
 
 .groups {
@@ -99,9 +100,25 @@ li.group-selected:hover {
 }
 
 .leftbar {
+  color: #f8f8f2;
+  background: @list-bg;
   width: 40%;
   height: 100%;
   float: left;
+
+}
+.groups, .channels {
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+    background: #2F2F2F;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(173, 173, 173, 0.21);
+    border-radius: 5px;
+    // box-shadow: 0 0 1px black inset;
+  }
 }
 
 .clearfix:after {

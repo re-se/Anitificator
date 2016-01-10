@@ -2,7 +2,7 @@ html,
 body {
   color: #2F2F2F;
   height: 100%;
-  overflow-y: hidden;
+  overflow: hidden;
   margin: 0;
 }
 #contents,
@@ -18,10 +18,10 @@ li {
   padding: 4px;
 }
 li:hover {
-  background-color: #f2f2f2;
+  background-color: #3c3c3c;
 }
 li.group-selected:hover {
-  background-color: #e5e5e5;
+  background-color: #4382d0;
 }
 .groups {
   height: 100%;
@@ -30,7 +30,7 @@ li.group-selected:hover {
   float: left;
 }
 .group-selected {
-  background: #F2F2F2;
+  background: #3275c7;
 }
 .channels {
   height: 100%;
@@ -79,9 +79,22 @@ li.group-selected:hover {
   font-size: small;
 }
 .leftbar {
+  color: #f8f8f2;
+  background: #2F2F2F;
   width: 40%;
   height: 100%;
   float: left;
+}
+.groups::-webkit-scrollbar,
+.channels::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+  background: #2F2F2F;
+}
+.groups::-webkit-scrollbar-thumb,
+.channels::-webkit-scrollbar-thumb {
+  background: rgba(173, 173, 173, 0.21);
+  border-radius: 5px;
 }
 .clearfix:after {
   visibility: hidden;

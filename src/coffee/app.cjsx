@@ -135,11 +135,11 @@ window.onload = ()->
             callback = (
               (onFinish, item)->
                 ()->
-                  document.getElementById("sound").play()
                   new Notification(
                     item.$.Title,
                     body: item.$.SubTitle
                   )
+                  document.getElementById("sound").play()
                   console.log item.$.Title
                   onFinish(+item.$.PID)
             )(@props.Actions.onFinishTimer, item)

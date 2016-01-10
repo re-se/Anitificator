@@ -164,10 +164,10 @@ window.onload = function() {
             this.props.Actions.onSetTimer(+item.$.PID);
             callback = (function(onFinish, item) {
               return function() {
-                document.getElementById("sound").play();
                 new Notification(item.$.Title, {
                   body: item.$.SubTitle
                 });
+                document.getElementById("sound").play();
                 console.log(item.$.Title);
                 return onFinish(+item.$.PID);
               };
