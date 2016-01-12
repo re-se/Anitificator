@@ -67,6 +67,16 @@ window.onload = function() {
     }
   });
   Channels = React.createClass({
+    shouldComponentUpdate: function(nextProps, nextState) {
+      var cond, ref, ref1;
+      cond = !(((ref = nextProps.channels) != null ? ref.length : void 0) > 0);
+      cond |= !(((ref1 = nextProps.groups) != null ? ref1.length : void 0) > 0);
+      cond |= !(nextProps.current >= 0);
+      if (cond) {
+        return false;
+      }
+      return true;
+    },
     changeCheck: function(e) {
       var id;
       id = +e.target.parentElement.id;
@@ -124,8 +134,14 @@ window.onload = function() {
     }
   });
   Animes = React.createClass({
+    shouldComponentUpdate: function(nextProps, nextState) {
+      if (!(nextProps.channels.length > 0)) {
+        return false;
+      }
+      return true;
+    },
     render: function() {
-      var callback, cname, cnt, date, end, hasTimer, item, items, j, len, now, ref, start, timing, trs;
+      var callback, cname, cnt, date, end, hasTimer, item, items, j, len, now, ref, ref1, start, timing, trs;
       console.log("currentTimer: " + this.props.currentTimer);
       console.log("notified: " + this.props.notified);
       hasTimer = !this.props.currentTimer.every((function(_this) {
@@ -143,8 +159,10 @@ window.onload = function() {
       ref = this.props.animes;
       for (j = 0, len = ref.length; j < len; j++) {
         item = ref[j];
-        if (!(this.props.channels.length > 0)) {
-          break;
+        if (+this.props.current !== 0) {
+          if (!((ref1 = this.props.groups[this.props.current]) != null ? ref1.ChID.includes(item.$.ChID) : void 0)) {
+            continue;
+          }
         }
         if (!this.props.config.channels[item.$.ChID]) {
           continue;
@@ -209,8 +227,19 @@ window.onload = function() {
         ]);
       }
       return React.createElement("div", {
-        "className": "animes-inner"
+        "className": "animes-inner",
+        "onWheel": this._onscroll
       }, items);
+    },
+    _onscroll: function(e) {
+      var ele, j, len, ref, results;
+      ref = document.getElementsByClassName("date");
+      results = [];
+      for (j = 0, len = ref.length; j < len; j++) {
+        ele = ref[j];
+        results.push(console.log(ele.scrollTop));
+      }
+      return results;
     }
   });
   Audios = React.createClass({
@@ -225,7 +254,7 @@ window.onload = function() {
     getInitialState: function() {
       return {
         group: [],
-        current: 0,
+        current: -1,
         channels: [],
         animes: [],
         config: require('./dist/js/config.js'),
@@ -270,12 +299,17 @@ window.onload = function() {
         return function(res) {
           var GroupList;
           GroupList = res;
-          _this.setState({
+          return _this.setState({
             group: [_this.state.group[0]].concat(GroupList.slice(1))
-          });
-          return syobocal.getChList(function(res) {
-            return _this.setState({
-              channels: res
+          }, function() {
+            return syobocal.getChList(function(res) {
+              return _this.setState({
+                channels: res
+              }, function() {
+                return _this.setState({
+                  current: 0
+                });
+              });
             });
           });
         };
@@ -395,6 +429,8 @@ window.onload = function() {
       }, React.createElement(Animes, {
         "Actions": AnimesActions,
         "notified": this.state.notified,
+        "groups": this.state.group,
+        "current": this.state.current,
         "currentTimer": this.state.currentTimer,
         "animes": this.state.animes,
         "channels": this.state.channels,

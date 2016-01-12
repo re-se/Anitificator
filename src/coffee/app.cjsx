@@ -57,6 +57,14 @@ window.onload = ()->
       )
 
   Channels = React.createClass
+    shouldComponentUpdate: (nextProps, nextState) ->
+      cond = !(nextProps.channels?.length > 0)
+      cond |= !(nextProps.groups?.length > 0)
+      cond |= !(nextProps.current >= 0)
+      if cond
+        return false
+      return true
+
     changeCheck: (e) ->
       id = +e.target.parentElement.id
       @props.onChange id, e.target.checked
@@ -103,6 +111,11 @@ window.onload = ()->
       )
 
   Animes = React.createClass
+    shouldComponentUpdate: (nextProps, nextState) ->
+      if !(nextProps.channels.length > 0)
+        return false
+      return true
+
     render: () ->
       console.log "currentTimer: " + @props.currentTimer
       console.log "notified: " + @props.notified
@@ -117,8 +130,9 @@ window.onload = ()->
       # now = parseDate "20160109101000"
       timing = Infinity
       for item in @props.animes
-        if !(@props.channels.length > 0)
-          break
+        unless +@props.current is 0
+          if not @props.groups[@props.current]?.ChID.includes(item.$.ChID)
+            continue
         if not @props.config.channels[item.$.ChID]
           continue
         start = parseDate item.$.StTime, +item.$.StOffset
@@ -178,10 +192,14 @@ window.onload = ()->
         ]
 
       return (
-        <div className="animes-inner">
+        <div className="animes-inner" onWheel={@_onscroll}>
           {items}
         </div>
       )
+
+    _onscroll: (e)->
+      for ele in document.getElementsByClassName("date")
+        console.log ele.scrollTop
 
   Audios = React.createClass
     render: () ->
@@ -194,7 +212,7 @@ window.onload = ()->
   Contents = React.createClass
     getInitialState: () ->
       group: []
-      current: 0
+      current: -1
       channels: []
       animes: []
       config: require './dist/js/config.js'
@@ -218,9 +236,10 @@ window.onload = ()->
       )
       syobocal.getGroupList ((res) =>
         GroupList = res
-        @setState group: [@state.group[0]].concat GroupList[1..]
-        syobocal.getChList (res) =>
-          @setState channels: res
+        @setState group: [@state.group[0]].concat(GroupList[1..]), ()=>
+          syobocal.getChList (res) =>
+            @setState channels: res, ()=>
+              @setState current: 0
       )
     onSetTimer: (PID) ->
       @setState currentTimer: @state.currentTimer.concat PID
@@ -294,6 +313,8 @@ window.onload = ()->
             <Animes
               Actions={AnimesActions}
               notified={@state.notified}
+              groups={@state.group}
+              current={@state.current}
               currentTimer={@state.currentTimer}
               animes={@state.animes}
               channels={@state.channels}
