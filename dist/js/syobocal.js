@@ -1,4 +1,4 @@
-var ChList, GroupList, app, config, csvToChList, fs, genGroupList, parseString, path, request, syobocal;
+var ChList, GroupList, app, config, csvToChList, fs, genGroupList, parseDate, parseString, path, request, requestAnimes, syobocal;
 
 app = require('app');
 
@@ -51,6 +51,45 @@ genGroupList = function(chs) {
     }
   }
   return GroupList;
+};
+
+parseDate = function(n, offset) {
+  var d, date;
+  if (offset == null) {
+    offset = 0;
+  }
+  d = [];
+  d.push(parseInt(n.slice(0, 4)));
+  d.push(parseInt(n.slice(4, 6)));
+  d.push(parseInt(n.slice(6, 8)));
+  d.push(parseInt(n.slice(8, 10)));
+  d.push(parseInt(n.slice(10, 12)));
+  date = new Date((d.slice(0, 3).join('-')) + " " + d[3] + ":" + d[4]);
+  if (offset !== 0) {
+    date.setTime(Date.parse(date) + offset * 1000);
+  }
+  return date;
+};
+
+requestAnimes = function(optstr, cb) {
+  var option;
+  if (cb == null) {
+    cb = optstr;
+    optstr = "";
+  }
+  console.log(optstr);
+  option = {
+    url: 'http://cal.syoboi.jp/cal_chk.php?' + optstr
+  };
+  return request.get(option, function(err, res, body) {
+    return parseString(body, {
+      trim: true
+    }, function(error, result) {
+      var items;
+      items = result.syobocal.ProgItems[0].ProgItem;
+      return cb(items);
+    });
+  });
 };
 
 syobocal = {
@@ -139,29 +178,42 @@ syobocal = {
     }
   },
   getAnimes: function(cb) {
-    var cachePath, option;
+    var cachePath;
     cachePath = path.join(app.getPath('cache'), app.getName(), "anidata.json");
     if (fs.existsSync(cachePath)) {
       console.log("cashe");
       return fs.readFile(cachePath, function(err, data) {
+        var date, date_m, json, last, option, to, to_m;
         if (err) {
           throw err;
         }
-        return cb(JSON.parse(data.toString()));
+        json = JSON.parse(data.toString());
+        last = json[json.length - 1];
+        console.log(last.$.StTime);
+        date = parseDate(last.$.StTime);
+        if (+date < Date.now()) {
+          date = new Date();
+        }
+        date_m = date.getTime();
+        to = new Date();
+        to.setDate(to.getDate() + 7);
+        to_m = to.getTime();
+        console.log("last: " + date);
+        console.log("to: " + to);
+        if (date_m < to_m) {
+          option = [];
+          return requestAnimes(function(items) {
+            fs.writeFile(cachePath, JSON.stringify(items));
+            return cb(items);
+          });
+        } else {
+          return cb(json);
+        }
       });
     } else {
-      option = {
-        url: 'http://cal.syoboi.jp/cal_chk.php'
-      };
-      return request.get(option, function(err, res, body) {
-        return parseString(body, {
-          trim: true
-        }, function(error, result) {
-          var items;
-          items = result.syobocal.ProgItems[0].ProgItem;
-          fs.writeFile(cachePath, JSON.stringify(items));
-          return cb(items);
-        });
+      return requestAnimes("", function(items) {
+        fs.writeFile(cachePath, JSON.stringify(items));
+        return cb(items);
       });
     }
   }

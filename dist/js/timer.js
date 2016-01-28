@@ -7,6 +7,9 @@ module.exports = setTimer = function(date, offset_sec, cb) {
     offset_sec = 0;
   }
   delta = date.getTime() + offset_sec * 1000 - Date.now();
+  if (delta > 60000) {
+    delta = 60000;
+  }
   console.log(delta);
   s = 0;
   if (delta <= 0) {

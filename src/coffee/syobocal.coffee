@@ -27,6 +27,32 @@ genGroupList = (chs) ->
       GroupList[ch.ChGID].ChID.push ch.ChID
   GroupList
 
+parseDate = (n, offset = 0) ->
+  d = []
+  d.push parseInt n[0..3]  # 0:year
+  d.push parseInt n[4..5]  # 1:month
+  d.push parseInt n[6..7]  # 2:day
+  d.push parseInt n[8..9]  # 3:hour
+  d.push parseInt n[10..11]  # 4:minute
+
+  date = new Date("#{d[0..2].join('-')} #{d[3]}:#{d[4]}")
+  date.setTime(Date.parse(date) + offset * 1000) if offset isnt 0
+  return date
+
+requestAnimes = (optstr, cb) ->
+  if !cb?
+    cb = optstr
+    optstr = ""
+  console.log optstr
+  option =
+    url: 'http://cal.syoboi.jp/cal_chk.php?' + optstr
+  request.get(
+    option
+    (err, res, body) ->
+      parseString body, trim: true, (error, result) ->
+        items = result.syobocal.ProgItems[0].ProgItem
+        cb(items)
+  )
 
 syobocal =
   getGroupList: (cb) ->
@@ -96,18 +122,38 @@ syobocal =
       console.log "cashe"
       fs.readFile cachePath, (err, data) ->
         throw err if err
-        cb(JSON.parse data.toString())
-    else
-      option =
-        url: 'http://cal.syoboi.jp/cal_chk.php'
-      request.get(
-        option
-        (err, res, body) ->
-          parseString body, trim: true, (error, result) ->
-            items = result.syobocal.ProgItems[0].ProgItem
+        json = JSON.parse data.toString()
+        last = json[json.length - 1]
+        console.log(last.$.StTime)
+        date = parseDate last.$.StTime
+        date = new Date() if +date < Date.now()
+        date_m = date.getTime()
+        to = new Date()
+        to.setDate(to.getDate() + 7)
+        to_m = to.getTime()
+        console.log "last: #{date}"
+        console.log "to: #{to}"
+        if date_m < to_m
+          option = []
+          # option.push "start=#{date.getFullYear()}-#{date.getMonth() + 1}-#{date.getDate() - 1}"
+          # days = (to_m - date_m) // (1000 * 60 * 60 * 24)
+          # option.push "days=#{days + 1}"
+          requestAnimes (items) ->
+            # console.log items[0]
+            # while((items[0].$.PID isnt last.$.PID) or (+items[0].$.StTime < +last.$.StTime))
+            #   items.shift()
+            # ret = json.concat items
             fs.writeFile cachePath, JSON.stringify items
             cb(items)
-    )
+        else
+          cb(json)
+    else
+      requestAnimes "", (items) ->
+        fs.writeFile cachePath, JSON.stringify items
+        cb(items)
+
+
+
 
 
 module.exports = syobocal

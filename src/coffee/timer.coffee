@@ -3,6 +3,7 @@ module.exports = setTimer = (date, offset_sec, cb) ->
     cb = offset_sec
     offset_sec = 0
   delta = date.getTime() + offset_sec * 1000 - Date.now()
+  delta = 60000 if delta > 60000
   console.log(delta)
   s = 0
   if delta <= 0
