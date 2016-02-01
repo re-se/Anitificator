@@ -280,18 +280,27 @@ window.onload = function() {
             }
           }
           ch.ChID = selected;
-          _this.setState({
-            group: [ch].concat(_this.state.group.slice(1))
-          });
           return _this.setState({
+            group: [ch].concat(_this.state.group.slice(1)),
             config: res
           });
         };
       })(this));
       syobocal.getAnimes((function(_this) {
         return function(res) {
+          var end, n, now;
+          now = Date.now();
+          n = 0;
+          while (true) {
+            end = parseDate(res[n].$.EdTime, +res[n].$.StOffset);
+            n++;
+            if (!(end.getTime() < now)) {
+              break;
+            }
+          }
+          console.log(n);
           return _this.setState({
-            animes: res
+            animes: res.slice(n - 1)
           });
         };
       })(this));
@@ -304,11 +313,8 @@ window.onload = function() {
           }, function() {
             return syobocal.getChList(function(res) {
               return _this.setState({
-                channels: res
-              }, function() {
-                return _this.setState({
-                  current: 0
-                });
+                channels: res,
+                current: 0
               });
             });
           });
@@ -322,21 +328,12 @@ window.onload = function() {
     },
     onFinishTimer: function(PID) {
       return this.setState({
-        notified: this.state.notified.concat(+PID)
-      }, function() {
-        return this.setState({
-          currentTimer: this.state.currentTimer.filter(function(d) {
-            return +d !== +PID;
-          })
-        }, function() {
-          return this.setState({
-            finished: +PID
-          }, function() {
-            return this.setState({
-              animes: this.state.animes
-            });
-          });
-        });
+        notified: this.state.notified.concat(+PID),
+        currentTimer: this.state.currentTimer.filter(function(d) {
+          return +d !== +PID;
+        }),
+        finished: +PID,
+        animes: this.state.animes
       });
     },
     chengeChGroup: function(ChGID) {
@@ -393,10 +390,8 @@ window.onload = function() {
       first = this.state.group[0];
       first.ChID = selected;
       syobocal.setConfig(config);
-      this.setState({
-        group: [first].concat(this.state.group.slice(1))
-      });
       return this.setState({
+        group: [first].concat(this.state.group.slice(1)),
         config: config
       });
     },

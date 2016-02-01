@@ -228,27 +228,37 @@ window.onload = ()->
         for c, i in res.channels
           selected.push i if c
         ch.ChID = selected
-        @setState group: [ch].concat @state.group[1..]
-        @setState config: res
+        @setState
+          group: [ch].concat @state.group[1..]
+          config: res
       )
       syobocal.getAnimes((res) =>
-        @setState animes: res
+        now = Date.now()
+        n = 0
+        loop
+          end = parseDate res[n].$.EdTime, +res[n].$.StOffset
+          n++
+          break unless end.getTime() < now
+        console.log n
+        @setState animes: res[n-1..]
       )
       syobocal.getGroupList ((res) =>
         GroupList = res
         @setState group: [@state.group[0]].concat(GroupList[1..]), ()=>
           syobocal.getChList (res) =>
-            @setState channels: res, ()=>
-              @setState current: 0
+            @setState
+              channels: res
+              current: 0
       )
     onSetTimer: (PID) ->
       @setState currentTimer: @state.currentTimer.concat PID
 
     onFinishTimer: (PID) ->
-      @setState notified: @state.notified.concat(+PID), ()->
-        @setState currentTimer: @state.currentTimer.filter((d)-> +d isnt +PID), ()->
-          @setState finished: +PID, ()->
-            @setState animes: @state.animes
+      @setState
+        notified: @state.notified.concat(+PID)
+        currentTimer: @state.currentTimer.filter((d)-> +d isnt +PID)
+        finished: +PID
+        animes: @state.animes
 
     chengeChGroup: (ChGID) ->
       @setState current: ChGID
@@ -283,8 +293,9 @@ window.onload = ()->
       first = @state.group[0]
       first.ChID = selected
       syobocal.setConfig config
-      @setState group: [first].concat @state.group[1..]
-      @setState config: config
+      @setState
+        group: [first].concat @state.group[1..]
+        config: config
 
     render: () ->
       AnimesActions =
