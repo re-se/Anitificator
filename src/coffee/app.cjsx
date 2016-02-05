@@ -4,6 +4,19 @@ window.onload = ()->
   ReactDOM = require 'react-dom'
   syobocal = remote.require './dist/js/syobocal.js'
   setTimer = require './dist/js/timer.js'
+  ipc = require('electron').ipcRenderer
+  showElement = (ele) ->
+    ele.style.display = "block"
+  hideElement = (ele) ->
+    ele.style.display = "none"
+  toggleElement = (ele) ->
+    setting.style.display = "none" if setting.style.display is ""
+    next = if setting.style.display is "none" then "block" else "none"
+    setting.style.display = next
+  ipc.on 'menu-clicked', (msg) ->
+    setting = document.getElementById 'setting'
+    toggleElement setting
+
   parseDate = (n, offset) ->
     d = []
     d.push parseInt n[0..3]  # 0:year
@@ -39,7 +52,7 @@ window.onload = ()->
     render: () ->
       lists = @props.data.filter((d) -> return d != undefined)
       groups = lists.map (g, index) =>
-        selected = "group-selected" if +@props.current is +g.ChGID
+        selected = "selected" if +@props.current is +g.ChGID
         return (
           # <td id={-ch.ChGID} rowSpan={@props.row}>
           #   <input type="checkbox" onChange={@changeGroupCheck}/>
@@ -182,7 +195,17 @@ window.onload = ()->
         <audio id="sound" src="./dist/resource/audio/notification.mp3" />
 
       )
-
+  Entries = React.createClass
+    render: () ->
+      save = () =>
+        @props.save()
+        hideElement document.getElementById("setting")
+      return (
+        <ul>
+          <li className="selected">チャンネル選択</li>
+          <li onClick={save}>設定を保存</li>
+        </ul>
+      )
   Contents = React.createClass
     getInitialState: () ->
       @currentTimers = []
@@ -239,11 +262,14 @@ window.onload = ()->
       hasTimer = false
       timing = null
       for item in @allAnimes[n..]
-        unless +@state.current is 0
-          if not @state.group[@state.current]?.ChID.includes(item.$.ChID)
-            continue
+        # unless +@state.current is 0
+          # if not @state.group[@state.current]?.ChID.includes(item.$.ChID)
+          #   continue
+
         if not config.channels[item.$.ChID]
           continue
+        end = parseDate item.$.EdTime, +item.$.StOffset
+        continue if end.getTime() < now
         if not hasTimer
           start = parseDate item.$.StTime, +item.$.StOffset
           if start > now
@@ -259,7 +285,7 @@ window.onload = ()->
               else
                 hasTimer = true
         res.push item
-        break if res.length > 30
+        break if res.length >= 30
       res
 
     setTimerFor: (item, start) ->
@@ -323,12 +349,14 @@ window.onload = ()->
       @setState
         group: [first].concat @state.group[1..]
         config: config
-        animes: @genAnimes config
 
     render: () ->
       return (
         <div className="inner clearfix">
-          <div className="leftbar">
+          <div id="setting" className="setting">
+            <div className="entries">
+              <Entries save={()=>@setState(animes: @genAnimes(@state.config))}/>
+            </div>
             <div className="groups">
               <Groups
                 data={@state.group}

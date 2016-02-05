@@ -1,10 +1,30 @@
 window.onload = function() {
-  var Animes, Audios, Channels, Contents, Groups, React, ReactDOM, formatDate, parseDate, remote, setTimer, syobocal;
+  var Animes, Audios, Channels, Contents, Entries, Groups, React, ReactDOM, formatDate, hideElement, ipc, parseDate, remote, setTimer, showElement, syobocal, toggleElement;
   remote = require('remote');
   React = require('react');
   ReactDOM = require('react-dom');
   syobocal = remote.require('./dist/js/syobocal.js');
   setTimer = require('./dist/js/timer.js');
+  ipc = require('electron').ipcRenderer;
+  showElement = function(ele) {
+    return ele.style.display = "block";
+  };
+  hideElement = function(ele) {
+    return ele.style.display = "none";
+  };
+  toggleElement = function(ele) {
+    var next;
+    if (setting.style.display === "") {
+      setting.style.display = "none";
+    }
+    next = setting.style.display === "none" ? "block" : "none";
+    return setting.style.display = next;
+  };
+  ipc.on('menu-clicked', function(msg) {
+    var setting;
+    setting = document.getElementById('setting');
+    return toggleElement(setting);
+  });
   parseDate = function(n, offset) {
     var d, date;
     d = [];
@@ -53,7 +73,7 @@ window.onload = function() {
         return function(g, index) {
           var selected;
           if (+_this.props.current === +g.ChGID) {
-            selected = "group-selected";
+            selected = "selected";
           }
           return React.createElement("li", {
             "className": selected,
@@ -205,6 +225,22 @@ window.onload = function() {
       });
     }
   });
+  Entries = React.createClass({
+    render: function() {
+      var save;
+      save = (function(_this) {
+        return function() {
+          _this.props.save();
+          return hideElement(document.getElementById("setting"));
+        };
+      })(this);
+      return React.createElement("ul", null, React.createElement("li", {
+        "className": "selected"
+      }, "チャンネル選択"), React.createElement("li", {
+        "onClick": save
+      }, "設定を保存"));
+    }
+  });
   Contents = React.createClass({
     getInitialState: function() {
       this.currentTimers = [];
@@ -273,7 +309,7 @@ window.onload = function() {
       })(this)));
     },
     genAnimes: function(config) {
-      var end, hasTimer, item, j, k, len, len1, n, now, ref, ref1, ref2, res, start, timer, timing;
+      var end, hasTimer, item, j, k, len, len1, n, now, ref, ref1, res, start, timer, timing;
       if (this.allAnimes == null) {
         return [];
       }
@@ -301,12 +337,11 @@ window.onload = function() {
       ref1 = this.allAnimes.slice(n);
       for (k = 0, len1 = ref1.length; k < len1; k++) {
         item = ref1[k];
-        if (+this.state.current !== 0) {
-          if (!((ref2 = this.state.group[this.state.current]) != null ? ref2.ChID.includes(item.$.ChID) : void 0)) {
-            continue;
-          }
-        }
         if (!config.channels[item.$.ChID]) {
+          continue;
+        }
+        end = parseDate(item.$.EdTime, +item.$.StOffset);
+        if (end.getTime() < now) {
           continue;
         }
         if (!hasTimer) {
@@ -328,7 +363,7 @@ window.onload = function() {
           }
         }
         res.push(item);
-        if (res.length > 30) {
+        if (res.length >= 30) {
           break;
         }
       }
@@ -419,16 +454,26 @@ window.onload = function() {
       syobocal.setConfig(config);
       return this.setState({
         group: [first].concat(this.state.group.slice(1)),
-        config: config,
-        animes: this.genAnimes(config)
+        config: config
       });
     },
     render: function() {
       return React.createElement("div", {
         "className": "inner clearfix"
       }, React.createElement("div", {
-        "className": "leftbar"
+        "id": "setting",
+        "className": "setting"
       }, React.createElement("div", {
+        "className": "entries"
+      }, React.createElement(Entries, {
+        "save": ((function(_this) {
+          return function() {
+            return _this.setState({
+              animes: _this.genAnimes(_this.state.config)
+            });
+          };
+        })(this))
+      })), React.createElement("div", {
         "className": "groups"
       }, React.createElement(Groups, {
         "data": this.state.group,

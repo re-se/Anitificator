@@ -27,28 +27,31 @@ li.group-selected:hover {
   background-color: lighten(@list-selected, 5%);
 }
 
-.groups {
+.groups, .channels, .entries {
   height: 100%;
-  width: 50%;
+  width: 33%;
   overflow-y: auto;
   float: left;
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+    background: #2F2F2F;
+  }
 
+  &::-webkit-scrollbar-thumb {
+    background: rgba(173, 173, 173, 0.21);
+    border-radius: 5px;
+    // box-shadow: 0 0 1px black inset;
+  }
 }
 
-.group-selected {
+.selected {
   background: @list-selected;
-}
-
-.channels {
-  height: 100%;
-  width: 50%;
-  float: left;
-  overflow-y: auto;
 }
 
 .animes {
   height: 100%;
-  width: 60%;
+  width: 100%;
   float: left;
   overflow-y: auto;
 
@@ -99,26 +102,19 @@ li.group-selected:hover {
   font-size: small;
 }
 
-.leftbar {
+.setting-btn {
+  position: fixed;
+  right: 2%;
+}
+
+.setting {
   color: #f8f8f2;
   background: @list-bg;
-  width: 40%;
+  width: 100%;
   height: 100%;
   float: left;
+  display: none;
 
-}
-.groups, .channels {
-  &::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-    background: #2F2F2F;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: rgba(173, 173, 173, 0.21);
-    border-radius: 5px;
-    // box-shadow: 0 0 1px black inset;
-  }
 }
 
 .clearfix:after {
