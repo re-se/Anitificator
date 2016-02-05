@@ -89,8 +89,8 @@ window.onload = ()->
       items = lists.map (ch, index) =>
         # style = {display: "none"} if not @props.groups[@props.current].ChID.includes(ch.ChID)
         return (
-          <li>
-            <label id={ch.ChID} key={ch.ChName}>
+          <li key={ch.ChName}>
+            <label id={ch.ChID}>
               <input type="checkbox" checked={@props.config.channels?[ch.ChID]} onChange={@changeCheck}/>
               {ch.ChName}
             </label>
@@ -117,49 +117,21 @@ window.onload = ()->
       return true
 
     render: () ->
-      console.log "currentTimer: " + @props.currentTimer
-      console.log "notified: " + @props.notified
-      hasTimer = not @props.currentTimer.every (ele) =>
-        @props.notified.includes +ele
-      console.log "hasTimer: " + hasTimer
+      # console.log "currentTimer: " + @props.currentTimer
+      # console.log "notified: " + @props.notified
+      # hasTimer = not @props.currentTimer.every (ele) =>
+      #   @props.notified.includes +ele
+      # console.log "hasTimer: " + hasTimer
       date = 0
       items = []
       trs = ""
-      cnt = 0
       now = Date.now()
       # now = parseDate "20160109101000"
       timing = Infinity
       for item in @props.animes
-        unless +@props.current is 0
-          if not @props.groups[@props.current]?.ChID.includes(item.$.ChID)
-            continue
-        if not @props.config.channels[item.$.ChID]
-          continue
         start = parseDate item.$.StTime, +item.$.StOffset
         end = parseDate item.$.EdTime, +item.$.StOffset
-        if end.getTime() < now # すでに終わった番組は飛ばす
-          continue
-        hasTimer = true if start.getTime() - timing > 0
-        if not hasTimer and start.getTime() > now
-          if not @props.notified.includes(+item.$.PID) and
-          not @props.currentTimer.includes(+item.$.PID)
-            timing = start.getTime()
-            console.log item.$.Title
-            @props.Actions.onSetTimer(+item.$.PID)
-            callback = (
-              (onFinish, item)->
-                ()->
-                  new Notification(
-                    item.$.Title,
-                    body: item.$.SubTitle
-                  )
-                  document.getElementById("sound").play()
-                  console.log item.$.Title
-                  onFinish(+item.$.PID)
-            )(@props.Actions.onFinishTimer, item)
-            setTimer(start, -300, callback)
-
-        if date.getDate?() isnt start.getDate() or cnt > 30
+        if date.getDate?() isnt start.getDate()
           if trs.length > 0
             trs = (
               <div>
@@ -172,8 +144,6 @@ window.onload = ()->
             ]
           date = start
           trs = []
-        if cnt++ > 30
-          break
         cname = if now > start.getTime() then "onair" else ""
         trs.push [
           <div className={"anime " + cname}><table><tbody>
@@ -190,7 +160,11 @@ window.onload = ()->
             </tr>
           </tbody></table></div>
         ]
-
+      if trs.length > 0
+        items.push [
+          <div className="date">{formatDate date, "MM/DD"}</div>
+          trs
+        ]
       return (
         <div className="animes-inner" onWheel={@_onscroll}>
           {items}
@@ -198,8 +172,8 @@ window.onload = ()->
       )
 
     _onscroll: (e)->
-      for ele in document.getElementsByClassName("date")
-        console.log ele.scrollTop
+      # for ele in document.getElementsByClassName("date")
+      #   console.log ele.scrollTop
 
   Audios = React.createClass
     render: () ->
@@ -211,8 +185,10 @@ window.onload = ()->
 
   Contents = React.createClass
     getInitialState: () ->
+      @currentTimers = []
+      @notified = []
       group: []
-      current: -1
+      current: 0
       channels: []
       animes: []
       config: require './dist/js/config.js'
@@ -231,16 +207,13 @@ window.onload = ()->
         @setState
           group: [ch].concat @state.group[1..]
           config: res
+          animes: @genAnimes res
       )
       syobocal.getAnimes((res) =>
+        @allAnimes = res
         now = Date.now()
         n = 0
-        loop
-          end = parseDate res[n].$.EdTime, +res[n].$.StOffset
-          n++
-          break unless end.getTime() < now
-        console.log n
-        @setState animes: res[n-1..]
+        @setState animes: @genAnimes(@state.config)
       )
       syobocal.getGroupList ((res) =>
         GroupList = res
@@ -250,18 +223,72 @@ window.onload = ()->
               channels: res
               current: 0
       )
-    onSetTimer: (PID) ->
-      @setState currentTimer: @state.currentTimer.concat PID
+    genAnimes: (config) ->
+      return [] unless @allAnimes?
+      for timer in @currentTimers
+        clearTimeout(timer.timeoutID) # unless @notified.includes timer.id
+      @currentTimers = []
+      now = Date.now()
+      n = 0
+      loop
+        end = parseDate @allAnimes[n].$.EdTime, +@allAnimes[n].$.StOffset
+        break unless end.getTime() < now
+        n++
+      return @allAnimes[n..] unless config?
+      res = []
+      hasTimer = false
+      timing = null
+      for item in @allAnimes[n..]
+        unless +@state.current is 0
+          if not @state.group[@state.current]?.ChID.includes(item.$.ChID)
+            continue
+        if not config.channels[item.$.ChID]
+          continue
+        if not hasTimer
+          start = parseDate item.$.StTime, +item.$.StOffset
+          if start > now
+            if not @notified.includes(+item.$.PID)
+              if not timing? or +timing is +start
+                timer = {}
+                console.log(item.$.Title)
+                timer.id = +item.$.PID
+                timer.timeoutID = @setTimerFor(item, start)
+                @currentTimers.push timer
+                console.log "currentTimers: "
+                timing = +start
+              else
+                hasTimer = true
+        res.push item
+        break if res.length > 30
+      res
+
+    setTimerFor: (item, start) ->
+      callback = (
+        (onFinish, item)->
+          ()->
+            new Notification(
+              item.$.Title,
+              body: item.$.SubTitle
+            )
+            document.getElementById("sound").play()
+            console.log item.$.Title
+            onFinish(+item.$.PID)
+      )(@onFinishTimer, item)
+      setTimer(start, -300, callback)
 
     onFinishTimer: (PID) ->
+      @notified.push +PID
       @setState
         notified: @state.notified.concat(+PID)
         currentTimer: @state.currentTimer.filter((d)-> +d isnt +PID)
         finished: +PID
-        animes: @state.animes
+        animes: @genAnimes @state.config
 
     chengeChGroup: (ChGID) ->
-      @setState current: ChGID
+      @setState
+        current: ChGID
+        () ->
+          @setState animes: @genAnimes @state.config
 
     checkChannel: (ChID, checked) ->
       chs = []
@@ -296,11 +323,9 @@ window.onload = ()->
       @setState
         group: [first].concat @state.group[1..]
         config: config
+        animes: @genAnimes config
 
     render: () ->
-      AnimesActions =
-        onSetTimer: @onSetTimer
-        onFinishTimer: @onFinishTimer
       return (
         <div className="inner clearfix">
           <div className="leftbar">
@@ -322,14 +347,10 @@ window.onload = ()->
           </div>
           <div className="animes">
             <Animes
-              Actions={AnimesActions}
-              notified={@state.notified}
               groups={@state.group}
               current={@state.current}
-              currentTimer={@state.currentTimer}
               animes={@state.animes}
               channels={@state.channels}
-              config={@state.config}
             />
           </div>
           <Audios finished={@state.finished}/>

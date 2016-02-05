@@ -111,9 +111,10 @@ window.onload = function() {
       items = lists.map((function(_this) {
         return function(ch, index) {
           var ref3;
-          return React.createElement("li", null, React.createElement("label", {
-            "id": ch.ChID,
+          return React.createElement("li", {
             "key": ch.ChName
+          }, React.createElement("label", {
+            "id": ch.ChID
           }, React.createElement("input", {
             "type": "checkbox",
             "checked": ((ref3 = _this.props.config.channels) != null ? ref3[ch.ChID] : void 0),
@@ -141,59 +142,18 @@ window.onload = function() {
       return true;
     },
     render: function() {
-      var callback, cname, cnt, date, end, hasTimer, item, items, j, len, now, ref, ref1, start, timing, trs;
-      console.log("currentTimer: " + this.props.currentTimer);
-      console.log("notified: " + this.props.notified);
-      hasTimer = !this.props.currentTimer.every((function(_this) {
-        return function(ele) {
-          return _this.props.notified.includes(+ele);
-        };
-      })(this));
-      console.log("hasTimer: " + hasTimer);
+      var cname, date, end, item, items, j, len, now, ref, start, timing, trs;
       date = 0;
       items = [];
       trs = "";
-      cnt = 0;
       now = Date.now();
       timing = Infinity;
       ref = this.props.animes;
       for (j = 0, len = ref.length; j < len; j++) {
         item = ref[j];
-        if (+this.props.current !== 0) {
-          if (!((ref1 = this.props.groups[this.props.current]) != null ? ref1.ChID.includes(item.$.ChID) : void 0)) {
-            continue;
-          }
-        }
-        if (!this.props.config.channels[item.$.ChID]) {
-          continue;
-        }
         start = parseDate(item.$.StTime, +item.$.StOffset);
         end = parseDate(item.$.EdTime, +item.$.StOffset);
-        if (end.getTime() < now) {
-          continue;
-        }
-        if (start.getTime() - timing > 0) {
-          hasTimer = true;
-        }
-        if (!hasTimer && start.getTime() > now) {
-          if (!this.props.notified.includes(+item.$.PID) && !this.props.currentTimer.includes(+item.$.PID)) {
-            timing = start.getTime();
-            console.log(item.$.Title);
-            this.props.Actions.onSetTimer(+item.$.PID);
-            callback = (function(onFinish, item) {
-              return function() {
-                new Notification(item.$.Title, {
-                  body: item.$.SubTitle
-                });
-                document.getElementById("sound").play();
-                console.log(item.$.Title);
-                return onFinish(+item.$.PID);
-              };
-            })(this.props.Actions.onFinishTimer, item);
-            setTimer(start, -300, callback);
-          }
-        }
-        if ((typeof date.getDate === "function" ? date.getDate() : void 0) !== start.getDate() || cnt > 30) {
+        if ((typeof date.getDate === "function" ? date.getDate() : void 0) !== start.getDate()) {
           if (trs.length > 0) {
             trs = React.createElement("div", null, trs);
             items.push([
@@ -204,9 +164,6 @@ window.onload = function() {
           }
           date = start;
           trs = [];
-        }
-        if (cnt++ > 30) {
-          break;
         }
         cname = now > start.getTime() ? "onair" : "";
         trs.push([
@@ -226,21 +183,19 @@ window.onload = function() {
           }, item.$.ChName), React.createElement("td", null, " ", formatDate(start) + " - " + formatDate(end) + " (offset: " + item.$.StOffset / 60 + " min)", " ")))))
         ]);
       }
+      if (trs.length > 0) {
+        items.push([
+          React.createElement("div", {
+            "className": "date"
+          }, formatDate(date, "MM/DD")), trs
+        ]);
+      }
       return React.createElement("div", {
         "className": "animes-inner",
         "onWheel": this._onscroll
       }, items);
     },
-    _onscroll: function(e) {
-      var ele, j, len, ref, results;
-      ref = document.getElementsByClassName("date");
-      results = [];
-      for (j = 0, len = ref.length; j < len; j++) {
-        ele = ref[j];
-        results.push(console.log(ele.scrollTop));
-      }
-      return results;
-    }
+    _onscroll: function(e) {}
   });
   Audios = React.createClass({
     render: function() {
@@ -252,9 +207,11 @@ window.onload = function() {
   });
   Contents = React.createClass({
     getInitialState: function() {
+      this.currentTimers = [];
+      this.notified = [];
       return {
         group: [],
-        current: -1,
+        current: 0,
         channels: [],
         animes: [],
         config: require('./dist/js/config.js'),
@@ -282,25 +239,19 @@ window.onload = function() {
           ch.ChID = selected;
           return _this.setState({
             group: [ch].concat(_this.state.group.slice(1)),
-            config: res
+            config: res,
+            animes: _this.genAnimes(res)
           });
         };
       })(this));
       syobocal.getAnimes((function(_this) {
         return function(res) {
-          var end, n, now;
+          var n, now;
+          _this.allAnimes = res;
           now = Date.now();
           n = 0;
-          while (true) {
-            end = parseDate(res[n].$.EdTime, +res[n].$.StOffset);
-            n++;
-            if (!(end.getTime() < now)) {
-              break;
-            }
-          }
-          console.log(n);
           return _this.setState({
-            animes: res.slice(n - 1)
+            animes: _this.genAnimes(_this.state.config)
           });
         };
       })(this));
@@ -321,24 +272,100 @@ window.onload = function() {
         };
       })(this)));
     },
-    onSetTimer: function(PID) {
-      return this.setState({
-        currentTimer: this.state.currentTimer.concat(PID)
-      });
+    genAnimes: function(config) {
+      var end, hasTimer, item, j, k, len, len1, n, now, ref, ref1, ref2, res, start, timer, timing;
+      if (this.allAnimes == null) {
+        return [];
+      }
+      ref = this.currentTimers;
+      for (j = 0, len = ref.length; j < len; j++) {
+        timer = ref[j];
+        clearTimeout(timer.timeoutID);
+      }
+      this.currentTimers = [];
+      now = Date.now();
+      n = 0;
+      while (true) {
+        end = parseDate(this.allAnimes[n].$.EdTime, +this.allAnimes[n].$.StOffset);
+        if (!(end.getTime() < now)) {
+          break;
+        }
+        n++;
+      }
+      if (config == null) {
+        return this.allAnimes.slice(n);
+      }
+      res = [];
+      hasTimer = false;
+      timing = null;
+      ref1 = this.allAnimes.slice(n);
+      for (k = 0, len1 = ref1.length; k < len1; k++) {
+        item = ref1[k];
+        if (+this.state.current !== 0) {
+          if (!((ref2 = this.state.group[this.state.current]) != null ? ref2.ChID.includes(item.$.ChID) : void 0)) {
+            continue;
+          }
+        }
+        if (!config.channels[item.$.ChID]) {
+          continue;
+        }
+        if (!hasTimer) {
+          start = parseDate(item.$.StTime, +item.$.StOffset);
+          if (start > now) {
+            if (!this.notified.includes(+item.$.PID)) {
+              if ((timing == null) || +timing === +start) {
+                timer = {};
+                console.log(item.$.Title);
+                timer.id = +item.$.PID;
+                timer.timeoutID = this.setTimerFor(item, start);
+                this.currentTimers.push(timer);
+                console.log("currentTimers: ");
+                timing = +start;
+              } else {
+                hasTimer = true;
+              }
+            }
+          }
+        }
+        res.push(item);
+        if (res.length > 30) {
+          break;
+        }
+      }
+      return res;
+    },
+    setTimerFor: function(item, start) {
+      var callback;
+      callback = (function(onFinish, item) {
+        return function() {
+          new Notification(item.$.Title, {
+            body: item.$.SubTitle
+          });
+          document.getElementById("sound").play();
+          console.log(item.$.Title);
+          return onFinish(+item.$.PID);
+        };
+      })(this.onFinishTimer, item);
+      return setTimer(start, -300, callback);
     },
     onFinishTimer: function(PID) {
+      this.notified.push(+PID);
       return this.setState({
         notified: this.state.notified.concat(+PID),
         currentTimer: this.state.currentTimer.filter(function(d) {
           return +d !== +PID;
         }),
         finished: +PID,
-        animes: this.state.animes
+        animes: this.genAnimes(this.state.config)
       });
     },
     chengeChGroup: function(ChGID) {
       return this.setState({
         current: ChGID
+      }, function() {
+        return this.setState({
+          animes: this.genAnimes(this.state.config)
+        });
       });
     },
     checkChannel: function(ChID, checked) {
@@ -392,15 +419,11 @@ window.onload = function() {
       syobocal.setConfig(config);
       return this.setState({
         group: [first].concat(this.state.group.slice(1)),
-        config: config
+        config: config,
+        animes: this.genAnimes(config)
       });
     },
     render: function() {
-      var AnimesActions;
-      AnimesActions = {
-        onSetTimer: this.onSetTimer,
-        onFinishTimer: this.onFinishTimer
-      };
       return React.createElement("div", {
         "className": "inner clearfix"
       }, React.createElement("div", {
@@ -422,14 +445,10 @@ window.onload = function() {
       }))), React.createElement("div", {
         "className": "animes"
       }, React.createElement(Animes, {
-        "Actions": AnimesActions,
-        "notified": this.state.notified,
         "groups": this.state.group,
         "current": this.state.current,
-        "currentTimer": this.state.currentTimer,
         "animes": this.state.animes,
-        "channels": this.state.channels,
-        "config": this.state.config
+        "channels": this.state.channels
       })), React.createElement(Audios, {
         "finished": this.state.finished
       }));
