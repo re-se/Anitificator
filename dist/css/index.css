@@ -20,7 +20,7 @@ li {
 li:hover {
   background-color: #3c3c3c;
 }
-li.group-selected:hover {
+li.selected:hover {
   background-color: #4382d0;
 }
 .groups,

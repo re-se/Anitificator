@@ -313,8 +313,8 @@ window.onload = ()->
     chengeChGroup: (ChGID) ->
       @setState
         current: ChGID
-        () ->
-          @setState animes: @genAnimes @state.config
+        # () ->
+        #   @setState animes: @genAnimes @state.config
 
     checkChannel: (ChID, checked) ->
       chs = []

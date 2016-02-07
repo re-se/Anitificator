@@ -397,10 +397,6 @@ window.onload = function() {
     chengeChGroup: function(ChGID) {
       return this.setState({
         current: ChGID
-      }, function() {
-        return this.setState({
-          animes: this.genAnimes(this.state.config)
-        });
       });
     },
     checkChannel: function(ChID, checked) {
