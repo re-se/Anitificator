@@ -1,3 +1,5 @@
 module.exports = {
-  channels: []
+  channels: [],
+  countdown: 300,
+  notification: "picon"
 };

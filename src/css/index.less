@@ -27,9 +27,28 @@ li.selected:hover {
   background-color: lighten(@list-selected, 5%);
 }
 
+.setting-right {
+  height: 100%;
+  width: 66%;
+  float: left;
+
+}
+
+.groups, .channels {
+  width: 50%;
+}
+
+.bases {
+  padding: 10px;
+}
+
+.entries {
+  border-right: 1px solid black;
+  width: 33%;
+}
+
 .groups, .channels, .entries {
   height: 100%;
-  width: 33%;
   overflow-y: auto;
   float: left;
   &::-webkit-scrollbar {

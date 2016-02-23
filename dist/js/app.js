@@ -1,5 +1,5 @@
 window.onload = function() {
-  var Animes, Audios, Channels, Contents, Entries, Groups, React, ReactDOM, formatDate, hideElement, ipc, parseDate, remote, setTimer, showElement, syobocal, toggleElement;
+  var Animes, Audios, BaseSettings, ChannelSettings, Channels, Contents, Entries, Groups, React, ReactDOM, Settings, formatDate, hideElement, ipc, parseDate, remote, setTimer, showElement, syobocal, toggleElement;
   remote = require('remote');
   React = require('react');
   ReactDOM = require('react-dom');
@@ -219,25 +219,147 @@ window.onload = function() {
   });
   Audios = React.createClass({
     render: function() {
+      if (this.props.sound == null) {
+        return React.createElement("div", null);
+      }
       return React.createElement("audio", {
-        "id": "sound",
-        "src": "./dist/resource/audio/notification.mp3"
+        "id": this.props.id,
+        "src": "./dist/resource/audio/" + this.props.sound + ".wav"
       });
+    }
+  });
+  BaseSettings = React.createClass({
+    render: function() {
+      var sounds;
+      sounds = ["picon", "picon2"].map((function(_this) {
+        return function(sound) {
+          return React.createElement("option", {
+            "key": sound,
+            "value": sound
+          }, sound);
+        };
+      })(this));
+      return React.createElement("div", {
+        "className": "setting-right"
+      }, React.createElement("div", {
+        "className": "bases"
+      }, React.createElement("input", {
+        "id": "setting_countdown",
+        "defaultValue": this.props.countdown,
+        "onChange": this.props.onChangeCountdown,
+        "placeholder": "default: 300"
+      }), "秒前に通知", React.createElement("div", null, React.createElement("span", null, "通知音:"), React.createElement("select", {
+        "id": "setting_sound",
+        "onChange": this.props.onChangeSound,
+        "value": this.props.sound
+      }, sounds), React.createElement("span", null, " "), React.createElement("span", {
+        "onClick": (function() {
+          return document.getElementById("test").play();
+        }),
+        "className": "fa fa-volume-up"
+      })), React.createElement(Audios, {
+        "id": "test",
+        "sound": this.props.sound
+      })));
+    }
+  });
+  ChannelSettings = React.createClass({
+    render: function() {
+      return React.createElement("div", {
+        "className": "setting-right"
+      }, React.createElement("div", {
+        "className": "groups"
+      }, React.createElement(Groups, {
+        "data": this.props.group,
+        "current": this.props.current,
+        "onClick": this.props.Action.changeChGroup
+      })), React.createElement("div", {
+        "className": "channels"
+      }, React.createElement(Channels, {
+        "channels": this.props.channels,
+        "groups": this.props.group,
+        "current": this.props.current,
+        "config": this.props.config,
+        "onChange": this.props.Action.checkChannel
+      })));
+    }
+  });
+  Settings = React.createClass({
+    changeSound: function(e) {
+      return this.setState({
+        sound: e.target.value
+      });
+    },
+    changeCountdown: function(e) {
+      return this.setState({
+        countdown: e.target.value
+      });
+    },
+    onSave: function() {
+      var config;
+      config = {};
+      config.countdown = this.state.countdown;
+      config.notification = this.state.sound;
+      this.props.onSave(config);
+      return hideElement(document.getElementById("setting"));
+    },
+    componentWillMount: function() {
+      return this.setState({
+        sound: this.props.config.notification,
+        countdown: this.props.config.countdown
+      });
+    },
+    render: function() {
+      var inner;
+      inner = (function() {
+        switch (this.props.settingPos) {
+          case 0:
+            return React.createElement(BaseSettings, {
+              "onChangeSound": this.changeSound,
+              "onChangeCountdown": this.changeCountdown,
+              "countdown": this.state.countdown,
+              "sound": this.state.sound
+            });
+          case 1:
+            return React.createElement(ChannelSettings, {
+              "group": this.props.group,
+              "current": this.props.current,
+              "channels": this.props.channels,
+              "config": this.props.config,
+              "Action": this.props.Action
+            });
+        }
+      }).call(this);
+      return React.createElement("div", {
+        "id": "setting",
+        "className": "setting"
+      }, React.createElement("div", {
+        "className": "entries"
+      }, React.createElement(Entries, {
+        "save": this.onSave,
+        "current": this.props.settingPos,
+        "click": this.props.Action.changeSettingPos
+      })), inner);
     }
   });
   Entries = React.createClass({
     render: function() {
-      var save;
-      save = (function(_this) {
-        return function() {
-          _this.props.save();
-          return hideElement(document.getElementById("setting"));
-        };
-      })(this);
       return React.createElement("ul", null, React.createElement("li", {
-        "className": "selected"
+        "className": (this.props.current === 0 ? "selected" : void 0),
+        "onClick": ((function(_this) {
+          return function() {
+            return _this.props.click(0);
+          };
+        })(this))
+      }, "基本設定"), React.createElement("li", {
+        "className": (this.props.current === 1 ? "selected" : void 0),
+        "onClick": ((function(_this) {
+          return function() {
+            return _this.props.click(1);
+          };
+        })(this))
       }, "チャンネル選択"), React.createElement("li", {
-        "onClick": save
+        "onClick": this.props.save
       }, "設定を保存"));
     }
   });
@@ -248,6 +370,7 @@ window.onload = function() {
       return {
         group: [],
         current: 0,
+        settingPos: 0,
         channels: [],
         animes: [],
         config: require('./dist/js/config.js'),
@@ -259,7 +382,12 @@ window.onload = function() {
     componentDidMount: function() {
       syobocal.getConfig((function(_this) {
         return function(res) {
-          var c, ch, i, j, len, ref, selected;
+          var c, ch, i, j, len, ref, selected, setting;
+          if (res.channels.length === 0) {
+            setting = document.getElementById('setting');
+            showElement(setting);
+            _this.changeSettingPos(1);
+          }
           ch = {
             ChGID: 0,
             ChGroupName: "選択中"
@@ -274,10 +402,9 @@ window.onload = function() {
           }
           ch.ChID = selected;
           return _this.setState({
-            group: [ch].concat(_this.state.group.slice(1)),
-            config: res,
-            animes: _this.genAnimes(res)
-          });
+            testSound: res.notification,
+            group: [ch].concat(_this.state.group.slice(1))
+          }, _this.saveSettings(res));
         };
       })(this));
       syobocal.getAnimes((function(_this) {
@@ -352,7 +479,7 @@ window.onload = function() {
                 timer = {};
                 console.log(item.$.Title);
                 timer.id = +item.$.PID;
-                timer.timeoutID = this.setTimerFor(item, start);
+                timer.timeoutID = this.setTimerFor(item, start, config.countdown);
                 this.currentTimers.push(timer);
                 console.log("currentTimers: ");
                 timing = +start;
@@ -369,8 +496,11 @@ window.onload = function() {
       }
       return res;
     },
-    setTimerFor: function(item, start) {
+    setTimerFor: function(item, start, offset_sec) {
       var callback;
+      if (!(+offset_sec > 0)) {
+        offset_sec = 300;
+      }
       callback = (function(onFinish, item) {
         return function() {
           new Notification(item.$.Title, {
@@ -381,7 +511,7 @@ window.onload = function() {
           return onFinish(+item.$.PID);
         };
       })(this.onFinishTimer, item);
-      return setTimer(start, -300, callback);
+      return setTimer(start, -offset_sec, callback);
     },
     onFinishTimer: function(PID) {
       this.notified.push(+PID);
@@ -394,7 +524,7 @@ window.onload = function() {
         animes: this.genAnimes(this.state.config)
       });
     },
-    chengeChGroup: function(ChGID) {
+    changeChGroup: function(ChGID) {
       return this.setState({
         current: ChGID
       });
@@ -453,37 +583,44 @@ window.onload = function() {
         config: config
       });
     },
+    changeSettingPos: function(pos) {
+      return this.setState({
+        settingPos: pos
+      });
+    },
+    saveSettings: function(config) {
+      if (config.channels == null) {
+        config.channels = this.state.config.channels;
+      }
+      if (config.countdown == null) {
+        config.countdown = 300;
+      }
+      if (config.notification == null) {
+        config.notification = "picon";
+      }
+      syobocal.setConfig(config);
+      return this.setState({
+        animes: this.genAnimes(config),
+        config: config
+      });
+    },
     render: function() {
+      var Action;
+      Action = {};
+      Action.checkChannel = this.checkChannel;
+      Action.changeChGroup = this.changeChGroup;
+      Action.changeSettingPos = this.changeSettingPos;
       return React.createElement("div", {
         "className": "inner clearfix"
-      }, React.createElement("div", {
-        "id": "setting",
-        "className": "setting"
-      }, React.createElement("div", {
-        "className": "entries"
-      }, React.createElement(Entries, {
-        "save": ((function(_this) {
-          return function() {
-            return _this.setState({
-              animes: _this.genAnimes(_this.state.config)
-            });
-          };
-        })(this))
-      })), React.createElement("div", {
-        "className": "groups"
-      }, React.createElement(Groups, {
-        "data": this.state.group,
-        "current": this.state.current,
-        "onClick": this.chengeChGroup
-      })), React.createElement("div", {
-        "className": "channels"
-      }, React.createElement(Channels, {
+      }, React.createElement(Settings, {
+        "group": this.state.group,
         "channels": this.state.channels,
-        "groups": this.state.group,
         "current": this.state.current,
+        "settingPos": this.state.settingPos,
         "config": this.state.config,
-        "onChange": this.checkChannel
-      }))), React.createElement("div", {
+        "onSave": this.saveSettings,
+        "Action": Action
+      }), React.createElement("div", {
         "className": "animes"
       }, React.createElement(Animes, {
         "groups": this.state.group,
@@ -491,7 +628,8 @@ window.onload = function() {
         "animes": this.state.animes,
         "channels": this.state.channels
       })), React.createElement(Audios, {
-        "finished": this.state.finished
+        "id": "sound",
+        "sound": this.state.config.notification
       }));
     }
   });

@@ -190,20 +190,105 @@ window.onload = ()->
 
   Audios = React.createClass
     render: () ->
-      # return <div></div> if @props.finished < 0
+      return <div></div> if !@props.sound?
       return (
-        <audio id="sound" src="./dist/resource/audio/notification.mp3" />
+        <audio id={@props.id} src="./dist/resource/audio/#{@props.sound}.wav" />
 
+      )
+  BaseSettings = React.createClass
+    render: () ->
+      sounds = ["picon", "picon2"].map (sound) =>
+        return <option key={sound} value={sound}>{sound}</option>
+      return (
+        <div className="setting-right">
+          <div className="bases">
+            <input id="setting_countdown" defaultValue={@props.countdown} onChange={@props.onChangeCountdown} placeholder="default: 300"/>
+            秒前に通知
+            <div>
+              <span>通知音:</span>
+              <select id="setting_sound" onChange={@props.onChangeSound} value={@props.sound}>
+                {sounds}
+              </select>
+              <span>&nbsp;</span>
+              <span onClick={()->document.getElementById("test").play()} className="fa fa-volume-up"></span>
+            </div>
+            <Audios id="test" sound={@props.sound}/>
+          </div>
+        </div>
+      )
+  ChannelSettings = React.createClass
+    render: () ->
+      return (
+        <div className="setting-right">
+          <div className="groups">
+            <Groups
+              data={@props.group}
+              current={@props.current}
+              onClick={@props.Action.changeChGroup} />
+          </div>
+          <div className="channels">
+            <Channels
+              channels={@props.channels}
+              groups={@props.group}
+              current={@props.current}
+              config={@props.config}
+              onChange={@props.Action.checkChannel}
+            />
+          </div>
+        </div>
+      )
+  Settings = React.createClass
+    changeSound: (e) ->
+      @setState sound: e.target.value
+    changeCountdown: (e) ->
+      @setState countdown: e.target.value
+    onSave: () ->
+      config = {}
+      config.countdown = @state.countdown
+      config.notification = @state.sound
+      @props.onSave(config)
+      hideElement document.getElementById("setting")
+    componentWillMount: () ->
+      @setState
+        sound: @props.config.notification
+        countdown: @props.config.countdown
+    render: () ->
+      inner = switch @props.settingPos
+        when 0
+          <BaseSettings
+            onChangeSound={@changeSound}
+            onChangeCountdown={@changeCountdown}
+            countdown={@state.countdown}
+            sound={@state.sound}
+          />
+        when 1
+          <ChannelSettings
+            group={@props.group}
+            current={@props.current}
+            channels={@props.channels}
+            config={@props.config}
+            Action={@props.Action}
+          />
+
+      return (
+        <div id="setting" className="setting">
+          <div className="entries">
+            <Entries
+              save={@onSave}
+              current={@props.settingPos}
+              click={@props.Action.changeSettingPos}
+            />
+          </div>
+          {inner}
+        </div>
       )
   Entries = React.createClass
     render: () ->
-      save = () =>
-        @props.save()
-        hideElement document.getElementById("setting")
       return (
         <ul>
-          <li className="selected">チャンネル選択</li>
-          <li onClick={save}>設定を保存</li>
+          <li className={if @props.current is 0 then "selected"} onClick={() => @props.click(0)}>基本設定</li>
+          <li className={if @props.current is 1 then "selected"} onClick={() => @props.click(1)}>チャンネル選択</li>
+          <li onClick={@props.save}>設定を保存</li>
         </ul>
       )
   Contents = React.createClass
@@ -212,6 +297,7 @@ window.onload = ()->
       @notified = []
       group: []
       current: 0
+      settingPos: 0
       channels: []
       animes: []
       config: require './dist/js/config.js'
@@ -220,6 +306,10 @@ window.onload = ()->
       finished: -1
     componentDidMount: () ->
       syobocal.getConfig((res) =>
+        if res.channels.length is 0
+          setting = document.getElementById 'setting'
+          showElement setting
+          @changeSettingPos 1
         ch =
           ChGID: 0
           ChGroupName: "選択中"
@@ -228,9 +318,9 @@ window.onload = ()->
           selected.push i if c
         ch.ChID = selected
         @setState
+          testSound: res.notification
           group: [ch].concat @state.group[1..]
-          config: res
-          animes: @genAnimes res
+          @saveSettings(res)
       )
       syobocal.getAnimes((res) =>
         @allAnimes = res
@@ -278,7 +368,7 @@ window.onload = ()->
                 timer = {}
                 console.log(item.$.Title)
                 timer.id = +item.$.PID
-                timer.timeoutID = @setTimerFor(item, start)
+                timer.timeoutID = @setTimerFor(item, start, config.countdown)
                 @currentTimers.push timer
                 console.log "currentTimers: "
                 timing = +start
@@ -288,7 +378,8 @@ window.onload = ()->
         break if res.length >= 30
       res
 
-    setTimerFor: (item, start) ->
+    setTimerFor: (item, start, offset_sec) ->
+      offset_sec = 300 if !(+offset_sec > 0)
       callback = (
         (onFinish, item)->
           ()->
@@ -300,7 +391,7 @@ window.onload = ()->
             console.log item.$.Title
             onFinish(+item.$.PID)
       )(@onFinishTimer, item)
-      setTimer(start, -300, callback)
+      setTimer(start, -offset_sec, callback)
 
     onFinishTimer: (PID) ->
       @notified.push +PID
@@ -310,7 +401,7 @@ window.onload = ()->
         finished: +PID
         animes: @genAnimes @state.config
 
-    chengeChGroup: (ChGID) ->
+    changeChGroup: (ChGID) ->
       @setState
         current: ChGID
         # () ->
@@ -350,29 +441,34 @@ window.onload = ()->
         group: [first].concat @state.group[1..]
         config: config
 
+    changeSettingPos: (pos) ->
+      @setState settingPos: pos
+
+    saveSettings: (config) ->
+      config.channels = @state.config.channels if !config.channels?
+      config.countdown = 300 if !config.countdown?
+      config.notification = "picon" if !config.notification?
+      syobocal.setConfig config
+      @setState
+        animes: @genAnimes(config)
+        config: config
+
     render: () ->
+      Action = {}
+      Action.checkChannel = @checkChannel
+      Action.changeChGroup = @changeChGroup
+      Action.changeSettingPos = @changeSettingPos
       return (
         <div className="inner clearfix">
-          <div id="setting" className="setting">
-            <div className="entries">
-              <Entries save={()=>@setState(animes: @genAnimes(@state.config))}/>
-            </div>
-            <div className="groups">
-              <Groups
-                data={@state.group}
-                current={@state.current}
-                onClick={@chengeChGroup} />
-            </div>
-            <div className="channels">
-              <Channels
-                channels={@state.channels}
-                groups={@state.group}
-                current={@state.current}
-                config={@state.config}
-                onChange={@checkChannel}
-              />
-            </div>
-          </div>
+          <Settings
+            group={@state.group}
+            channels={@state.channels}
+            current={@state.current}
+            settingPos={@state.settingPos}
+            config={@state.config}
+            onSave={@saveSettings}
+            Action={Action}
+          />
           <div className="animes">
             <Animes
               groups={@state.group}
@@ -381,7 +477,7 @@ window.onload = ()->
               channels={@state.channels}
             />
           </div>
-          <Audios finished={@state.finished}/>
+          <Audios id="sound" sound={@state.config.notification}/>
         </div>
       )
 

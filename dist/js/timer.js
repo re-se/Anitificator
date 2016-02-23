@@ -7,18 +7,14 @@ module.exports = setTimer = function(date, offset_sec, cb) {
     offset_sec = 0;
   }
   delta = date.getTime() + offset_sec * 1000 - Date.now();
-  if (delta > 60000) {
-    delta = 60000;
+  if (delta > 30000) {
+    delta = 30000;
   }
   console.log(delta);
   s = 0;
   if (delta <= 0) {
     cb();
     return;
-  } else if (delta < 6000) {
-    s = delta;
-  } else {
-    s = delta / 2;
   }
-  return setTimeout(setTimer, s, date, offset_sec, cb);
+  return setTimeout(setTimer, delta, date, offset_sec, cb);
 };

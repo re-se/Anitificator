@@ -9,12 +9,32 @@ var mainWindow = null;
 var showSetting = function() {
   mainWindow.webContents.send('menu-clicked', '');
 }
-
+var name = 'Anitificator';
 var menu = Menu.buildFromTemplate([
   {
-    label: 'Anitificator',
+    label: name,
     submenu: [
       {label: 'Preferences...', accelerator: 'CmdOrCtrl+,', click: showSetting},
+      {
+        type: 'separator'
+      },
+      {
+        label: 'Hide ' + name,
+        accelerator: 'Command+H',
+        role: 'hide'
+      },
+      {
+        label: 'Hide Others',
+        accelerator: 'Command+Alt+H',
+        role: 'hideothers'
+      },
+      {
+        label: 'Show All',
+        role: 'unhide'
+      },
+      {
+        type: 'separator'
+      },
       {label: 'Exit', accelerator: 'CmdOrCtrl+Q', click: app.quit}
     ]
   },
@@ -125,7 +145,7 @@ var menu = Menu.buildFromTemplate([
 
 
 app.on('window-all-closed', function() {
-  if (process.platform != 'darwin')
+  // if (process.platform != 'darwin')
     app.quit();
 });
 
