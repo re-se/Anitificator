@@ -210,7 +210,7 @@ window.onload = ()->
                 {sounds}
               </select>
               <span>&nbsp;</span>
-              <span onClick={()->document.getElementById("test").play()} className="fa fa-volume-up"></span>
+              <span onClick={()->document.getElementById("test")?.play()} className="fa fa-volume-up"></span>
             </div>
             <Audios id="test" sound={@props.sound}/>
           </div>
@@ -387,7 +387,7 @@ window.onload = ()->
               item.$.Title,
               body: item.$.SubTitle
             )
-            document.getElementById("sound").play()
+            document.getElementById("sound")?.play()
             console.log item.$.Title
             onFinish(+item.$.PID)
       )(@onFinishTimer, item)
