@@ -254,7 +254,8 @@ window.onload = function() {
         "value": this.props.sound
       }, sounds), React.createElement("span", null, " "), React.createElement("span", {
         "onClick": (function() {
-          return document.getElementById("test").play();
+          var ref;
+          return (ref = document.getElementById("test")) != null ? ref.play() : void 0;
         }),
         "className": "fa fa-volume-up"
       })), React.createElement(Audios, {
@@ -503,10 +504,13 @@ window.onload = function() {
       }
       callback = (function(onFinish, item) {
         return function() {
+          var ref;
           new Notification(item.$.Title, {
             body: item.$.SubTitle
           });
-          document.getElementById("sound").play();
+          if ((ref = document.getElementById("sound")) != null) {
+            ref.play();
+          }
           console.log(item.$.Title);
           return onFinish(+item.$.PID);
         };
