@@ -1,10 +1,12 @@
-app = require 'app'
+{app} = require 'electron'
 fs = require 'fs'
 path = require 'path'
 {parseString} = require 'xml2js'
 request = require 'request'
 ChList = []
 GroupList = []
+ChSize = -1
+ChGSize = -1
 config = null
 csvToChList = (csv) ->
   lines = csv.split("\n")
@@ -17,9 +19,13 @@ csvToChList = (csv) ->
     for l, i in label
       channel[l] = elems[i]
     ChList[channel.ChID] = channel
+    ChSize = +channel.ChID if ChSize < +channel.ChID
+    ChGSize = +channel.ChGID if ChGSize < +channel.ChGID
+  ChList[0] = null unless ChList[0]?
   ChList
 
 genGroupList = (chs) ->
+  GroupList = Array(ChGSize + 1).fill(null)
   for ch in chs
     if ch?
       unless GroupList[ch.ChGID]?
@@ -57,6 +63,7 @@ requestAnimes = (optstr, cb) ->
 syobocal =
   getGroupList: (cb) ->
     if GroupList.length > 0
+      console.log GroupList.length, GroupList[4]
       cb GroupList
       return
     if ChList.length > 0
@@ -68,7 +75,7 @@ syobocal =
   setConfig: (conf) ->
     console.log "set config"
     console.log typeof conf
-    cachePath = path.join app.getPath('cache'), app.getName(), "config.json"
+    cachePath = path.join app.getPath('userData'), "config.json"
     config = conf
     fs.writeFile cachePath, JSON.stringify config
 
@@ -76,52 +83,59 @@ syobocal =
     if config?
       return cb config
     else
-      cachePath = path.join app.getPath('cache'), app.getName(), "config.json"
-      if fs.existsSync(cachePath)
-        console.log(cachePath)
-        fs.readFile cachePath, (err, data) ->
-          throw err if err
+      cachePath = path.join app.getPath('userData'), "config.json"
+      console.log(cachePath)
+      fs.readFile cachePath, (err, data) ->
+        if err
+          config = require './config.js'
+          fs.writeFile cachePath, JSON.stringify config
+          cb(config)
+        else
           config = JSON.parse data.toString()
           cb(JSON.parse data.toString())
-      else
-        config = require './config.js'
-        fs.writeFile cachePath, JSON.stringify config
-        cb(config)
+
 
   getChList: (cb) ->
-    cachePath = path.join app.getPath('cache'), app.getName(), "chdata.json"
     if ChList.length > 0
       cb ChList
       return
 
-    if fs.existsSync(cachePath)
-      console.log(cachePath)
-      fs.readFile cachePath, (err, data) ->
-        throw err if err
-        cb(JSON.parse data.toString())
-    else
-      client = require 'cheerio-httpcli'
-      client.fetch('http://cal.syoboi.jp/mng?Action=ShowChList', {}, (err, $, res) ->
-        # console.log($('title').text())
-        # console.log($(".output")[1].children[0].children.innerHTML)
-        csv = ""
-        for ch in $(".output")[1].children
-          if ch.type is "tag"
-            column = []
-            for c in ch.children
-              column.push c.children[0].data if c.children[0]?
-            csv += column.join(",") + "\n"
-        json = csvToChList csv
-        fs.writeFile cachePath, JSON.stringify json
-        cb(json)
-      )
-  getAnimes: (cb) ->
-    cachePath = path.join app.getPath('cache'), app.getName(), "anidata.json"
+    cachePath = path.join app.getPath('userData'), "chdata.json"
+    console.log(cachePath)
+    fs.readFile cachePath, (err, data) ->
+      if err
+        client = require 'cheerio-httpcli'
+        client.fetch('http://cal.syoboi.jp/mng?Action=ShowChList', {}, (err, $, res) ->
+          # console.log($('title').text())
+          # console.log($(".output")[1].children[0].children.innerHTML)
+          csv = ""
+          for ch in $(".output")[1].children
+            if ch.type is "tag"
+              column = []
+              for c in ch.children
+                column.push c.children[0].data if c.children[0]?
+              csv += column.join(",") + "\n"
+          ChList = csvToChList csv
+          json = {ChList: ChList, ChSize: ChSize, ChGSize: ChGSize}
+          fs.writeFile cachePath, JSON.stringify json
+          cb(ChList)
+        )
+      else
+        json = JSON.parse data.toString()
+        ChSize = json.ChSize
+        ChGSize = json.ChGSize
+        ChList = json.ChList
+        cb(ChList)
 
-    if fs.existsSync(cachePath)
-      console.log "cashe"
-      fs.readFile cachePath, (err, data) ->
-        throw err if err
+  getAnimes: (cb) ->
+    cachePath = path.join app.getPath('userData'), "anidata.json"
+    fs.readFile cachePath, (err, data) ->
+      if err
+        console.log err
+        requestAnimes "", (items) ->
+          fs.writeFile cachePath, JSON.stringify items
+          cb(items)
+      else
         json = JSON.parse data.toString()
         last = json[json.length - 1]
         console.log(last.$.StTime)
@@ -147,12 +161,6 @@ syobocal =
             cb(items)
         else
           cb(json)
-    else
-      requestAnimes "", (items) ->
-        fs.writeFile cachePath, JSON.stringify items
-        cb(items)
-
-
 
 
 

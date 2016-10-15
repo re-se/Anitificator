@@ -1,15 +1,14 @@
-var app = require('app');
-var BrowserWindow = require('browser-window');
-var Menu = require('menu');
+const {app, BrowserWindow, Menu, Tray} = require('electron');
 
-require('crash-reporter').start();
+// crashReporter.start();
 
 var mainWindow = null;
+var appIcon = null;
 
 var showSetting = function() {
   mainWindow.webContents.send('menu-clicked', '');
 }
-var name = 'Anitificator';
+var name = app.getName();
 var menu = Menu.buildFromTemplate([
   {
     label: name,
@@ -151,12 +150,23 @@ app.on('window-all-closed', function() {
 
 app.on('ready', function() {
   // ブラウザ(Chromium)の起動, 初期画面のロード
-
-  mainWindow = new BrowserWindow({width: 470, height: 720});
-  mainWindow.loadUrl('file://' + __dirname + '/index.html');
+  appIcon = new Tray(__dirname + '/dist/resource/image/icon.png');
+  mainWindow = new BrowserWindow({"width": 470, "height": 720, "frame": false, "show": false, "title": name});
+  mainWindow.loadURL('file://' + __dirname + '/index.html');
 
   Menu.setApplicationMenu(menu);
   mainWindow.on('closed', function() {
     mainWindow = null;
+  });
+
+  appIcon.on('click', function clicked (e, bounds) {
+    console.log(bounds);
+    console.log(mainWindow.isVisible());
+    if (mainWindow.isVisible()) {
+      mainWindow.hide();
+    } else {
+      mainWindow.setPosition(10 + bounds.x - mainWindow.getSize()[0] / 2, bounds.y);
+      mainWindow.show();
+    }
   });
 });
